@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Pipeline outputs
+pipeline/plots/
+pipeline/outputs/
+pipeline/team_game_dataset.csv
