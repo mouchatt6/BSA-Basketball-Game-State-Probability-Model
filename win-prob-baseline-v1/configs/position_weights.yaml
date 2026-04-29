@@ -1,0 +1,18 @@
+default_position: F
+stat_coefficients:
+  points: 0.9997434923588219
+  rebounds: 0.0001510069554678691
+  assists: 0.0002772389667772763
+position_multipliers:
+  G:
+    points: 1.0000522737825377
+    rebounds: 0.6866254823021336
+    assists: 1.0498710458990403
+  F:
+    points: 1.0
+    rebounds: 1.0
+    assists: 1.0
+  C:
+    points: 1.0000240657576953
+    rebounds: 0.787904260261103
+    assists: 0.945383923228148

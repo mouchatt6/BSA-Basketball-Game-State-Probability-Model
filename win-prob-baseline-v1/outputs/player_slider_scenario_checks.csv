@@ -1,0 +1,4 @@
+scenario_name,base_spread_home,delta_margin_from_players,effective_spread_home,home_win_probability_normal_rule
+home_star_guard_plus,3.5,4.999664579215333,8.499664579215333,0.7606221820760095
+away_center_dominant,3.5,-3.9995461238680345,-0.49954612386803454,0.48339728962719253
+balanced_home_plus_away_minus,3.5,6.999918196751075,10.499918196751075,0.809211192560062
