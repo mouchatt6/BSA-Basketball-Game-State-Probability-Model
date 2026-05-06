@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 import time
@@ -10,7 +12,10 @@ from nba_api.stats.endpoints import leaguegamefinder
 from sklearn.cluster import KMeans
 from sklearn.linear_model import Ridge
 
-from .player_adjustment import PositionWeightConfig
+try:
+    from .player_adjustment import PositionWeightConfig
+except ImportError:
+    from player_adjustment import PositionWeightConfig
 
 
 @dataclass
@@ -239,4 +244,40 @@ def write_calibrated_config(calibrated: CalibratedWeights, config_path: Path | s
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(yaml.safe_dump(payload, sort_keys=False))
     return PositionWeightConfig.from_yaml(out)
+
+
+def main() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(description="Calibrate position-weighted player margin coefficients.")
+    parser.add_argument("--season", default="2023-24", help="NBA season string, e.g. 2023-24")
+    parser.add_argument("--ridge-alpha", type=float, default=10.0, help="Ridge regression regularization strength")
+    parser.add_argument(
+        "--config-path",
+        type=Path,
+        default=project_root / "configs" / "position_weights.yaml",
+        help="Where to write the calibrated position_weights YAML",
+    )
+    parser.add_argument(
+        "--weights-json",
+        type=Path,
+        default=project_root / "outputs" / "position_stat_weights.json",
+        help="Where to write the full calibrated weights payload as JSON",
+    )
+    args = parser.parse_args()
+
+    print(f"Calibrating position weights from season={args.season} (ridge_alpha={args.ridge_alpha})...")
+    calibrated = calibrate_position_weights(season=args.season, ridge_alpha=args.ridge_alpha)
+    write_calibrated_config(calibrated=calibrated, config_path=args.config_path)
+
+    args.weights_json.parent.mkdir(parents=True, exist_ok=True)
+    args.weights_json.write_text(json.dumps(calibrated.to_payload(), indent=2))
+
+    print(f"Trained on {calibrated.training_rows} game rows.")
+    print(f"Stat coefficients: {calibrated.stat_coefficients}")
+    print(f"Wrote position config -> {args.config_path}")
+    print(f"Wrote weights payload -> {args.weights_json}")
+
+
+if __name__ == "__main__":
+    main()
 
