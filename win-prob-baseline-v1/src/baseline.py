@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from dataclasses import asdict, dataclass
 from math import erf, sqrt
 from pathlib import Path
@@ -8,6 +9,11 @@ import json
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+
+try:
+    from .data_loader import load_betting_data, split_train_test
+except ImportError:
+    from data_loader import load_betting_data, split_train_test
 
 
 @dataclass
@@ -73,4 +79,54 @@ def brier_score(y_true: np.ndarray, y_prob: np.ndarray) -> float:
     y = np.asarray(y_true, dtype=float)
     p = np.asarray(y_prob, dtype=float)
     return float(np.mean((p - y) ** 2))
+
+
+def main() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    repo_root = project_root.parent
+    parser = argparse.ArgumentParser(description="Fit baseline win probability model.")
+    parser.add_argument("--csv", type=Path, default=repo_root / "nba_2008-2025.csv")
+    parser.add_argument("--train-season", type=int, default=2024)
+    parser.add_argument("--test-season", type=int, default=2025)
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=project_root / "outputs" / "baseline_params.json",
+        help="Where to write the model parameters as JSON",
+    )
+    args = parser.parse_args()
+
+    print(f"Loading {args.csv}...")
+    data = load_betting_data(args.csv)
+    train_df, test_df = split_train_test(
+        data,
+        train_season=args.train_season,
+        test_season=args.test_season,
+        regular_only=True,
+    )
+
+    print(f"Fitting baseline model on {len(train_df)} train games...")
+    model = fit_baseline_model(train_df)
+
+    train_probs = model.predict_proba(train_df["signed_spread_home"].to_numpy())
+    test_probs = model.predict_proba(test_df["signed_spread_home"].to_numpy())
+    train_metrics = {
+        "log_loss": log_loss(train_df["home_win"].to_numpy(), train_probs),
+        "brier": brier_score(train_df["home_win"].to_numpy(), train_probs),
+    }
+    test_metrics = {
+        "log_loss": log_loss(test_df["home_win"].to_numpy(), test_probs),
+        "brier": brier_score(test_df["home_win"].to_numpy(), test_probs),
+    }
+
+    model.save(args.out)
+
+    print(f"Intercept: {model.intercept:.4f} | spread_coef: {model.spread_coef:.4f}")
+    print(f"Train metrics: log_loss={train_metrics['log_loss']:.4f}, brier={train_metrics['brier']:.4f}")
+    print(f"Test  metrics: log_loss={test_metrics['log_loss']:.4f}, brier={test_metrics['brier']:.4f}")
+    print(f"Wrote model params -> {args.out}")
+
+
+if __name__ == "__main__":
+    main()
 

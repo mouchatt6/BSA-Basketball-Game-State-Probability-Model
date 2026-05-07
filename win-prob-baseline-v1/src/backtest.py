@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import argparse
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from .baseline import BaselineModel, brier_score, fit_baseline_model, log_loss
+try:
+    from .baseline import BaselineModel, brier_score, fit_baseline_model, log_loss
+    from .data_loader import load_betting_data, split_train_test
+except ImportError:
+    from baseline import BaselineModel, brier_score, fit_baseline_model, log_loss
+    from data_loader import load_betting_data, split_train_test
 
 
 @dataclass
@@ -124,4 +132,64 @@ def calibration_table_from_predictions(predictions: pd.DataFrame, bins: int = 10
     y = predictions["home_win"].to_numpy(dtype=float)
     p = predictions["pred_home_win_prob_model"].to_numpy(dtype=float)
     return _calibration_table(y_true=y, y_prob=p, bins=bins)
+
+
+def main() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    repo_root = project_root.parent
+    parser = argparse.ArgumentParser(description="Run rolling backtest of the baseline model.")
+    parser.add_argument("--csv", type=Path, default=repo_root / "nba_2008-2025.csv")
+    parser.add_argument("--train-season", type=int, default=2024)
+    parser.add_argument("--test-season", type=int, default=2025)
+    parser.add_argument("--retrain-every", type=int, default=50, help="Retrain cadence in test games")
+    parser.add_argument("--rolling-window", type=int, default=200, help="Rolling-metric window size")
+    parser.add_argument(
+        "--outputs-dir",
+        type=Path,
+        default=project_root / "outputs",
+        help="Directory to write backtest artifacts",
+    )
+    parser.add_argument("--calibration-bins", type=int, default=10)
+    args = parser.parse_args()
+
+    print(f"Loading {args.csv}...")
+    data = load_betting_data(args.csv)
+    train_df, test_df = split_train_test(
+        data,
+        train_season=args.train_season,
+        test_season=args.test_season,
+        regular_only=True,
+    )
+
+    print(f"Running rolling backtest: {len(test_df)} test games | "
+          f"retrain every {args.retrain_every} | rolling window {args.rolling_window}")
+    result = run_rolling_backtest(
+        train_df=train_df,
+        test_df=test_df,
+        retrain_every_games=args.retrain_every,
+        rolling_window=args.rolling_window,
+    )
+
+    args.outputs_dir.mkdir(parents=True, exist_ok=True)
+    preds_path = args.outputs_dir / f"backtest_{args.test_season}_game_predictions.csv"
+    rolling_path = args.outputs_dir / f"backtest_{args.test_season}_rolling_metrics.csv"
+    summary_path = args.outputs_dir / f"backtest_{args.test_season}_summary.json"
+    calibration_path = args.outputs_dir / f"backtest_{args.test_season}_calibration.csv"
+
+    result.game_predictions.to_csv(preds_path, index=False)
+    result.rolling_metrics.to_csv(rolling_path, index=False)
+    summary_path.write_text(json.dumps(result.summary, indent=2))
+    calibration_table_from_predictions(result.game_predictions, bins=args.calibration_bins).to_csv(
+        calibration_path, index=False
+    )
+
+    print(f"Summary: {result.summary}")
+    print(f"Wrote predictions      -> {preds_path}")
+    print(f"Wrote rolling metrics  -> {rolling_path}")
+    print(f"Wrote summary          -> {summary_path}")
+    print(f"Wrote calibration      -> {calibration_path}")
+
+
+if __name__ == "__main__":
+    main()
 

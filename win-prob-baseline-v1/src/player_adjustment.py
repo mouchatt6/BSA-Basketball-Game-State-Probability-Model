@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -60,4 +61,44 @@ def compute_player_margin_delta(players: list[PlayerDelta], config: PositionWeig
         )
         total += sign * contribution
     return total
+
+
+def main() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(description="Run sample player-margin-delta scenarios against a position-weight config.")
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=project_root / "configs" / "position_weights.yaml",
+        help="Path to a position_weights YAML",
+    )
+    args = parser.parse_args()
+
+    print(f"Loading config from {args.config}...")
+    config = PositionWeightConfig.from_yaml(args.config)
+
+    scenarios: dict[str, list[PlayerDelta]] = {
+        "home_star_guard_plus": [
+            PlayerDelta("home_g1", "home", "G", 5.0, 1.0, 2.0),
+        ],
+        "away_center_dominant": [
+            PlayerDelta("away_c1", "away", "C", 4.0, 4.0, 0.0),
+        ],
+        "balanced_home_plus_away_minus": [
+            PlayerDelta("home_g2", "home", "G", 3.0, 0.0, 2.0),
+            PlayerDelta("home_f1", "home", "F", 2.0, 2.0, 1.0),
+            PlayerDelta("away_g1", "away", "G", -2.0, 0.0, -1.0),
+        ],
+    }
+
+    print(f"Default position: {config.default_position}")
+    print(f"Stat coefficients: {config.stat_coefficients}")
+    print("Scenario margin deltas:")
+    for name, players in scenarios.items():
+        delta = compute_player_margin_delta(players, config)
+        print(f"  {name}: {delta:+.3f}")
+
+
+if __name__ == "__main__":
+    main()
 
