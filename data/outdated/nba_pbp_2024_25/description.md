@@ -1,1 +1,0 @@
-This folder stores NBA pbp data for the 24-25 season pulled from the nba_api (https://github.com/swar/nba_api). Games are identified by a unique gameId, which is the 10-digit ID you will see for the names of the files in this data folder. 
