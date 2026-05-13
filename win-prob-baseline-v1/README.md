@@ -75,6 +75,10 @@ What it does:
 - Player layer is scenario-based (counterfactual at inference time), but the weights are learned from historical player game logs.
 - Position effects are calibrated from 2023-24 NBA regular season logs via ridge regression on home margin.
 
+## Known Caveats / Open Flags
+
+- **Assist–points double counting.** `compute_player_margin_delta` adds `AssistDelta.margin_contribution()` (~2.65 margin pts per assist, of which ~2.45 is `expected_pts_per_assist()`) on top of the points slider's contribution. In reality, the points produced by an assist also show up in the team's points scored — so moving both the PTS and AST sliders on the same player partially double-counts the assisted bucket. The `redistribute_assist_points()` helper in `src/player_adjustment.py` is the primitive for fixing this: subtract the passer's `direct_team_points()` from the team's own points contribution and credit only the `BETA_AST_PREMIUM` playmaking bump, distributing the assisted points to teammates by scoring share. Worth resolving before V2 / before any user-facing claims based on slider deltas.
+
 ## Next Up
 
 - Replace fixed position multipliers with estimated player-specific coefficients.
