@@ -467,6 +467,75 @@ const POSITION_WEIGHTS = {
     C: { points: 1.0000240657576953, rebounds: 0.787904260261103, assists: 0.945383923228148 },
   },
 };
+// Mirror of src/player_adjustment.py rebound-impact calibration.
+const REBOUND_CALIBRATION = {
+  pi_o_by_bucket: { G: (0.18 + 0.20) / 2, F: (0.22 + 0.28) / 2, C: 0.32 },
+  beta_oreb: 1.10,
+  beta_dreb: 1.10,
+  rho_d: 0.30,
+};
+function reboundMarginContribution(deltaReb, posBucket){
+  const piO = REBOUND_CALIBRATION.pi_o_by_bucket[posBucket] ?? 0.24;
+  const piD = 1 - piO;
+  const dOreb = piO * deltaReb;
+  const dDreb = piD * deltaReb;
+  return REBOUND_CALIBRATION.beta_oreb * dOreb
+       + REBOUND_CALIBRATION.beta_dreb * REBOUND_CALIBRATION.rho_d * dDreb;
+}
+// Mirror of src/player_adjustment.py assist-impact calibration.
+const ASSIST_CALIBRATION = {
+  pi_2: 0.58,
+  pi_3: 0.42,
+  pi_ft_given_2: 0.06,
+  pi_ft_given_3: 0.02,
+  pi_ft_made: 0.78,
+  beta_ast_premium: 0.20,
+};
+function expectedPtsPerAssist(){
+  const c = ASSIST_CALIBRATION;
+  const p2    = c.pi_2 * (1 - c.pi_ft_given_2);
+  const p2ft  = c.pi_2 * c.pi_ft_given_2;
+  const p3    = c.pi_3 * (1 - c.pi_ft_given_3);
+  const p3ft  = c.pi_3 * c.pi_ft_given_3;
+  return p2 * 2.0 + p2ft * (2.0 + c.pi_ft_made)
+       + p3 * 3.0 + p3ft * (3.0 + c.pi_ft_made);
+}
+function assistMarginContribution(deltaAst){
+  return deltaAst * expectedPtsPerAssist()
+       + ASSIST_CALIBRATION.beta_ast_premium * deltaAst;
+}
+// Mirror of WinProbModel in src/player_adjustment.py — three chained derivatives
+// for likelihood indicators on each player slider.
+function anchorRebMargin(){ return reboundMarginContribution(1.0, 'F'); }
+function indicatorC(stat){
+  if(stat==='PTS') return POSITION_WEIGHTS.stat_coefficients.points;
+  if(stat==='REB') return anchorRebMargin();
+  if(stat==='AST') return assistMarginContribution(1.0);
+  return 0;
+}
+function indicatorWPos(stat, posBucket){
+  if(stat==='PTS'){
+    const m = POSITION_WEIGHTS.position_multipliers[posBucket]
+            || POSITION_WEIGHTS.position_multipliers.F;
+    return m.points;
+  }
+  if(stat==='REB'){
+    const anchor = anchorRebMargin();
+    return anchor === 0 ? 1.0 : reboundMarginContribution(1.0, posBucket) / anchor;
+  }
+  return 1.0; // AST is position-independent
+}
+function sliderSensitivity(pWin, stat, posBucket){
+  return pWin*(1-pWin)*BASELINE_MODEL.spread_coef*indicatorC(stat)*indicatorWPos(stat,posBucket);
+}
+function sliderScore(y, pWin, stat, posBucket){
+  return (y - pWin)*BASELINE_MODEL.spread_coef*indicatorC(stat)*indicatorWPos(stat,posBucket);
+}
+function sliderFisher(pWin, stat, posBucket){
+  const d = BASELINE_MODEL.spread_coef*indicatorC(stat)*indicatorWPos(stat,posBucket);
+  return pWin*(1-pWin)*d*d;
+}
+const SLIDER_STEP = { pts: 1, reb: 0.5, ast: 0.5 };
 const TEAM_SLIDER_POINTS_FACTOR = 0.12;
 
 function sigmoid(x){return 1/(1+Math.exp(-x));}
@@ -666,8 +735,8 @@ function getPlayerMarginDetails(){
       const pos=toPosBucket(POSITIONS[i]||'F');
       const m=POSITION_WEIGHTS.position_multipliers[pos]||POSITION_WEIGHTS.position_multipliers.F;
       const ptsContrib=POSITION_WEIGHTS.stat_coefficients.points*m.points*dPts;
-      const rebContrib=POSITION_WEIGHTS.stat_coefficients.rebounds*m.rebounds*dReb;
-      const astContrib=POSITION_WEIGHTS.stat_coefficients.assists*m.assists*dAst;
+      const rebContrib=reboundMarginContribution(dReb,pos);
+      const astContrib=assistMarginContribution(dAst);
       if(side==='a'){
         out.sideA.points+=ptsContrib; out.sideA.rebounds+=rebContrib; out.sideA.assists+=astContrib;
         out.margin += ptsContrib+rebContrib+astContrib;
@@ -707,16 +776,19 @@ function buildFive(side,team){
           <span class="mlbl">PTS</span>
           <div class="mslider"><input type="range" class="range-${side}" id="ps-${side}-${i}-pts" min="0" max="45" step="1" value="${pts}" oninput="onPSlider('${side}',${i})"></div>
           <span class="mval" id="pmv-${side}-${i}-pts">${pts}</span>
+          <span class="sr-delta" id="psd-${side}-${i}-pts"></span>
         </div>
         <div class="msr">
           <span class="mlbl">REB</span>
           <div class="mslider"><input type="range" class="range-${side}" id="ps-${side}-${i}-reb" min="0" max="20" step="0.5" value="${reb}" oninput="onPSlider('${side}',${i})"></div>
           <span class="mval" id="pmv-${side}-${i}-reb">${reb}</span>
+          <span class="sr-delta" id="psd-${side}-${i}-reb"></span>
         </div>
         <div class="msr">
           <span class="mlbl">AST</span>
           <div class="mslider"><input type="range" class="range-${side}" id="ps-${side}-${i}-ast" min="0" max="15" step="0.5" value="${ast}" oninput="onPSlider('${side}',${i})"></div>
           <span class="mval" id="pmv-${side}-${i}-ast">${ast}</span>
+          <span class="sr-delta" id="psd-${side}-${i}-ast"></span>
         </div>
       </div>`;
     container.appendChild(card);
@@ -758,6 +830,29 @@ function aggregateFive(side){
   updateAll();
 }
 
+// ── Per-slider likelihood indicators (sensitivity × step) ────────────────
+function updateSliderIndicators(pa){
+  const pb = 1 - pa;
+  ['a','b'].forEach(side=>{
+    const pSide = side==='a' ? pa : pb;
+    const team = state[side].team;
+    if(!team) return;
+    const players = (MODEL_DATA.team_players[team]||[]).slice(0,5);
+    players.forEach((_p, i)=>{
+      const pos = toPosBucket(POSITIONS[i]||'F');
+      [['pts','PTS'], ['reb','REB'], ['ast','AST']].forEach(([key, stat])=>{
+        const el = document.getElementById(`psd-${side}-${i}-${key}`);
+        if(!el) return;
+        const step = SLIDER_STEP[key];
+        const dP = sliderSensitivity(pSide, stat, pos) * step;
+        const pct = dP * 100;
+        if(Math.abs(pct) < 0.01){ el.textContent=''; el.className='sr-delta'; }
+        else { el.textContent = `+${pct.toFixed(2)}%/step`; el.className='sr-delta up'; }
+      });
+    });
+  });
+}
+
 // ── Main update ───────────────────────────────────────────────────────────
 function updateAll(){
   const va=getVals('a'), vb=getVals('b');
@@ -769,6 +864,7 @@ function updateAll(){
   const effectiveSpread=baselineSpread + playerDetails.margin + teamSliderMargin;
   const pa=ready?predictWinFromSpread(effectiveSpread):0.5;
   const pb=1-pa;
+  updateSliderIndicators(pa);
   const pctA=Math.round(pa*100), pctB=Math.round(pb*100);
   const ca=probColor(pa), cb=probColor(pb);
 
