@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBA What If — Win Probability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Barlow+Condensed:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080a0f;
+  --bg-2: #0d1018;
+  --surface: #12151e;
+  --surface-2: #181c28;
+  --surface-3: #1f2435;
+  --surface-4: #272d44;
+  --border: rgba(255,255,255,0.06);
+  --border-2: rgba(255,255,255,0.11);
+  --border-3: rgba(255,255,255,0.18);
+  --text: #edf0f8;
+  --text-2: #9aa0bc;
+  --text-3: #555e7a;
+  --text-4: #323850;
+  --green: #22c55e;
+  --red: #ef4444;
+  --font: 'Inter', sans-serif;
+  --font-d: 'Barlow Condensed', sans-serif;
+  --ease: cubic-bezier(0.16,1,0.3,1);
+  --t: 200ms;
+  --r: 10px; --r-sm: 6px; --r-lg: 14px;
+  /* Team A / B colors */
+  --a: #FFC72C;
+  --a-dim: rgba(255,199,44,0.13);
+  --a-glow: rgba(255,199,44,0.28);
+  --b: #C8102E;
+  --b-dim: rgba(200,16,46,0.13);
+  --b-glow: rgba(200,16,46,0.28);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh;line-height:1.5;overflow-x:hidden;}
+
+/* ── HEADER ── */
+header{
+  background:rgba(10,12,20,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);padding:0 24px;height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:300;
+}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-mark{
+  width:32px;height:32px;background:linear-gradient(135deg,var(--a),#ff9f0a);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-d);font-weight:900;font-size:13px;color:#000;
+  box-shadow:0 0 14px var(--a-glow);
+}
+.logo-word{font-family:var(--font-d);font-weight:800;font-size:20px;}
+.logo-word em{color:var(--a);font-style:normal;}
+.hbadge{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;background:rgba(255,199,44,.1);color:var(--a);padding:4px 10px;border-radius:20px;border:1px solid rgba(255,199,44,.25);}
+
+/* ── TEAM SELECTOR BAR ── */
+.selector-bar{
+  background:var(--bg-2);border-bottom:1px solid var(--border);
+  padding:0 24px;display:flex;align-items:stretch;gap:0;
+  overflow-x:auto;scrollbar-width:none;
+}
+.selector-bar::-webkit-scrollbar{display:none;}
+.selector-side{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 20px 12px 0;flex-shrink:0;
+  border-right:1px solid var(--border);margin-right:16px;
+}
+.selector-side:last-child{border-right:none;border-left:1px solid var(--border);margin-left:16px;padding-left:20px;margin-right:0;padding-right:0;}
+.side-label{
+  font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;padding:4px 10px;border-radius:4px;flex-shrink:0;
+}
+.side-label.a{background:var(--a-dim);color:var(--a);border:1px solid color-mix(in oklch,var(--a) 35%,transparent);}
+.side-label.b{background:var(--b-dim);color:var(--b);border:1px solid color-mix(in oklch,var(--b) 35%,transparent);}
+.team-chips-scroll{display:flex;gap:8px;align-items:center;flex:1;overflow-x:auto;padding:10px 0;scrollbar-width:none;}
+.team-chips-scroll::-webkit-scrollbar{display:none;}
+.chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-sm);padding:5px 11px;cursor:pointer;
+  transition:all var(--t) var(--ease);flex-shrink:0;white-space:nowrap;
+}
+.chip-dot{width:7px;height:7px;border-radius:50%;background:var(--border-2);flex-shrink:0;transition:background var(--t);}
+.chip span{font-size:12px;font-weight:600;color:var(--text-3);transition:color var(--t);}
+.chip:hover{border-color:var(--border-2);background:var(--surface-2);}
+.chip:hover span{color:var(--text-2);}
+.chip.sel-a{border-color:var(--a)!important;background:var(--a-dim)!important;}
+.chip.sel-a span{color:var(--a)!important;}
+.chip.sel-a .chip-dot{background:var(--a)!important;}
+.chip.sel-b{border-color:var(--b)!important;background:var(--b-dim)!important;}
+.chip.sel-b span{color:var(--b)!important;}
+.chip.sel-b .chip-dot{background:var(--b)!important;}
+
+/* ── MAIN ── */
+.main{
+  display:grid;
+  grid-template-columns:1fr 320px 1fr;
+  grid-template-rows:auto;
+  gap:18px;padding:20px 24px;
+  max-width:1400px;margin:0 auto;align-items:start;
+}
+@media(max-width:1100px){.main{grid-template-columns:1fr 1fr;}}
+@media(max-width:700px){.main{grid-template-columns:1fr;padding:12px;}}
+
+.col-a{display:flex;flex-direction:column;gap:14px;}
+.col-center{display:flex;flex-direction:column;gap:14px;align-items:center;}
+.col-b{display:flex;flex-direction:column;gap:14px;}
+
+/* ── PANEL ── */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;}
+.panel.team-a{border-color:color-mix(in oklch,var(--a) 28%,var(--border));}
+.panel.team-b{border-color:color-mix(in oklch,var(--b) 28%,var(--border));}
+.ph{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.ph-title{font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-3);}
+.pb{padding:18px;}
+
+/* ── TEAM HERO ── */
+.team-hero{
+  padding:18px;display:flex;align-items:center;gap:14px;
+  position:relative;overflow:hidden;
+}
+.team-hero::after{
+  content:'';position:absolute;top:-30px;right:-30px;
+  width:160px;height:160px;border-radius:50%;
+  pointer-events:none;transition:background var(--t);
+}
+.team-hero.a::after{background:radial-gradient(circle,color-mix(in oklch,var(--a) 18%,transparent),transparent 70%);}
+.team-hero.b::after{background:radial-gradient(circle,color-mix(in oklch,var(--b) 18%,transparent),transparent 70%);}
+.team-abbr-circle{
+  width:60px;height:60px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-d);font-weight:900;font-size:20px;
+  background:var(--surface-2);border:2px solid var(--border-2);
+  transition:color var(--t),border-color var(--t),box-shadow var(--t);
+}
+.team-hero.a .team-abbr-circle{color:var(--a);border-color:color-mix(in oklch,var(--a) 40%,transparent);box-shadow:0 0 20px color-mix(in oklch,var(--a) 22%,transparent);}
+.team-hero.b .team-abbr-circle{color:var(--b);border-color:color-mix(in oklch,var(--b) 40%,transparent);box-shadow:0 0 20px color-mix(in oklch,var(--b) 22%,transparent);}
+.hero-info{flex:1;min-width:0;}
+.hero-name{font-family:var(--font-d);font-size:22px;font-weight:800;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.team-hero.a .hero-name{color:var(--a);}
+.team-hero.b .hero-name{color:var(--b);}
+.hero-rec{display:flex;gap:8px;margin-top:5px;align-items:center;flex-wrap:wrap;}
+.hrec{font-family:var(--font-d);font-size:13px;font-weight:600;color:var(--text-2);}
+.hrec strong{font-size:15px;}
+.team-hero.a .hrec strong{color:var(--a);}
+.team-hero.b .hrec strong{color:var(--b);}
+.hrdiv{width:1px;height:12px;background:var(--border-2);}
+.hero-pills{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.hpill{font-size:10px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;}
+
+/* ── SLIDERS ── */
+.sliders-col{display:flex;flex-direction:column;gap:13px;}
+.sr{display:flex;flex-direction:column;gap:5px;}
+.sr-top{display:flex;align-items:baseline;justify-content:space-between;}
+.sr-lbl{font-size:12px;font-weight:600;color:var(--text-2);}
+.sr-val{font-family:var(--font-d);font-size:19px;font-weight:800;min-width:58px;text-align:right;}
+.sr-delta{font-size:10px;font-weight:600;margin-left:3px;}
+.sr-delta.up{color:var(--green);}
+.sr-delta.dn{color:var(--red);}
+.sr-hint{display:flex;justify-content:space-between;font-size:10px;color:var(--text-4);margin-top:2px;}
+
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:4px;background:var(--surface-4);border-radius:2px;cursor:pointer;outline:none;}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--surface-4);border-radius:2px;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;margin-top:-6px;transition:transform 140ms;box-shadow:0 2px 8px rgba(0,0,0,.45);}
+input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.22);}
+input[type=range]::-moz-range-track{height:4px;background:var(--surface-4);border-radius:2px;}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border:none;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+/* Team A sliders */
+.range-a::-webkit-slider-thumb{background:var(--a);}
+.range-a::-moz-range-thumb{background:var(--a);}
+/* Team B sliders */
+.range-b::-webkit-slider-thumb{background:var(--b);}
+.range-b::-moz-range-thumb{background:var(--b);}
+
+/* ── PLAYER CARDS ── */
+.five-col{display:flex;flex-direction:column;gap:9px;}
+.pcard{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:border-color var(--t);}
+.pcard:hover{border-color:var(--border-2);}
+.pcard-top{padding:10px 13px;display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;}
+.pnum{width:24px;height:24px;border-radius:50%;background:var(--surface-3);font-family:var(--font-d);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid;}
+.pcard.a .pnum{color:var(--a);border-color:color-mix(in oklch,var(--a) 30%,transparent);}
+.pcard.b .pnum{color:var(--b);border-color:color-mix(in oklch,var(--b) 30%,transparent);}
+.pname-wrap{flex:1;min-width:0;}
+.pname{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ppos{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text-3);}
+.pstats{display:flex;gap:5px;}
+.psb{background:var(--surface-3);border-radius:4px;padding:3px 7px;min-width:38px;display:flex;flex-direction:column;align-items:center;}
+.psb-v{font-family:var(--font-d);font-size:14px;font-weight:800;line-height:1;}
+.pcard.a .psb-v{color:var(--a);}
+.pcard.b .psb-v{color:var(--b);}
+.psb-l{font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text-3);margin-top:1px;}
+.expand-arrow{font-size:11px;color:var(--text-3);transition:transform var(--t);flex-shrink:0;}
+.pcard.open .expand-arrow{transform:rotate(180deg);}
+.psliders{display:none;padding:0 13px 12px;border-top:1px solid var(--border);}
+.pcard.open .psliders{display:block;padding-top:11px;}
+.msr{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.msr:last-child{margin-bottom:0;}
+.mlbl{font-size:10px;font-weight:600;color:var(--text-3);width:28px;flex-shrink:0;}
+.mslider{flex:1;}
+.mval{font-family:var(--font-d);font-size:13px;font-weight:700;width:36px;text-align:right;flex-shrink:0;}
+.pcard.a .mval{color:var(--a);}
+.pcard.b .mval{color:var(--b);}
+
+/* ── CENTER COLUMN ── */
+/* Head-to-head gauge */
+.h2h-panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:22px 20px;width:100%;
+  position:sticky;top:70px;
+}
+.h2h-title{font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--text-3);text-align:center;margin-bottom:18px;}
+
+/* VS split bar */
+.split-wrap{position:relative;height:52px;border-radius:8px;overflow:hidden;margin-bottom:14px;display:flex;}
+.split-a{height:100%;transition:width .55s var(--ease);background:linear-gradient(90deg,var(--a),color-mix(in oklch,var(--a) 70%,var(--a)));}
+.split-b{height:100%;transition:width .55s var(--ease);background:linear-gradient(270deg,var(--b),color-mix(in oklch,var(--b) 70%,var(--b)));}
+.split-label-a,.split-label-b{
+  position:absolute;top:50%;transform:translateY(-50%);
+  font-family:var(--font-d);font-size:22px;font-weight:900;
+  pointer-events:none;transition:left .55s var(--ease),right .55s var(--ease);
+  text-shadow:0 2px 8px rgba(0,0,0,.5);
+}
+.split-label-a{left:14px;color:#000;}
+.split-label-b{right:14px;color:#fff;}
+.split-vs{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  font-family:var(--font-d);font-size:12px;font-weight:800;letter-spacing:1px;
+  background:var(--bg);color:var(--text-3);
+  padding:3px 8px;border-radius:4px;border:1px solid var(--border-2);
+  z-index:2;
+}
+
+/* Big numbers row */
+.big-nums{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px;}
+.big-num{display:flex;flex-direction:column;align-items:center;flex:1;}
+.bn-val{font-family:var(--font-d);font-size:56px;font-weight:900;line-height:.9;letter-spacing:-2px;transition:color .4s;}
+.bn-pct{font-family:var(--font-d);font-size:22px;font-weight:800;vertical-align:super;}
+.bn-lbl{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--text-3);margin-top:5px;}
+.bn-name{font-size:11px;font-weight:600;color:var(--text-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;text-align:center;}
+.vs-divider{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.vs-text{font-family:var(--font-d);font-size:16px;font-weight:800;color:var(--text-4);}
+.vs-bar{width:1px;height:40px;background:var(--border-2);}
+
+/* Verdict */
+.verdict-box{
+  text-align:center;padding:10px 14px;border-radius:8px;
+  border:1px solid var(--border-2);background:var(--surface-2);
+  margin-bottom:14px;transition:background .4s,border-color .4s;
+}
+.verdict-text{font-size:13px;font-weight:600;color:var(--text-2);}
+
+/* Factor compare bars */
+.factor-compare{margin-top:4px;}
+.fc-title{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-3);margin-bottom:10px;text-align:center;}
+.fc-row{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;margin-bottom:8px;}
+.fc-row:last-child{margin-bottom:0;}
+.fc-bar-a,.fc-bar-b{height:5px;border-radius:3px;transition:width .5s var(--ease);}
+.fc-bar-a{background:var(--a);margin-left:auto;border-radius:3px 0 0 3px;}
+.fc-bar-b{background:var(--b);border-radius:0 3px 3px 0;}
+.fc-label{font-size:10px;font-weight:600;color:var(--text-3);text-align:center;white-space:nowrap;}
+.fc-side{display:flex;align-items:center;gap:4px;}
+.fc-side.a{justify-content:flex-end;}
+.fc-side.b{justify-content:flex-start;}
+.fc-val{font-family:var(--font-d);font-size:11px;font-weight:700;}
+.fc-side.a .fc-val{color:var(--a);}
+.fc-side.b .fc-val{color:var(--b);}
+
+/* Action buttons */
+.act-row{display:flex;gap:8px;margin-top:12px;}
+.btn{flex:1;padding:8px 12px;border-radius:var(--r-sm);font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:all var(--t) var(--ease);text-align:center;}
+.btn-ghost{background:transparent;border-color:var(--border-2);color:var(--text-2);}
+.btn-ghost:hover{border-color:var(--border-3);color:var(--text);background:var(--surface-2);}
+.btn-a{background:var(--a-dim);border-color:color-mix(in oklch,var(--a) 40%,transparent);color:var(--a);}
+.btn-a:hover{background:color-mix(in oklch,var(--a) 22%,transparent);}
+.btn-b{background:var(--b-dim);border-color:color-mix(in oklch,var(--b) 40%,transparent);color:var(--b);}
+.btn-b:hover{background:color-mix(in oklch,var(--b) 22%,transparent);}
+
+/* Stat comparison grid */
+.stat-grid{width:100%;}
+.sg-row{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);}
+.sg-row:last-child{border:none;}
+.sg-val{font-family:var(--font-d);font-size:14px;font-weight:700;}
+.sg-val.a{color:var(--a);text-align:right;}
+.sg-val.b{color:var(--b);text-align:left;}
+.sg-val.a.better{font-size:16px;}
+.sg-val.b.better{font-size:16px;}
+.sg-lbl{font-size:10px;font-weight:600;color:var(--text-3);text-align:center;letter-spacing:.3px;}
+.sg-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-left:4px;vertical-align:middle;}
+.sg-dot.a{background:var(--a);}
+.sg-dot.b{background:var(--b);}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--surface-4);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">W%</div>
+    <span class="logo-word">NBA <em>What If</em></span>
+  </div>
+  <span class="hbadge">Stat Threshold Model</span>
+</header>
+
+<!-- SELECTOR BAR -->
+<div class="selector-bar">
+  <div class="selector-side">
+    <span class="side-label a">Team A</span>
+  </div>
+  <div class="team-chips-scroll" id="chipsA"></div>
+  <div class="selector-side">
+    <span class="side-label b">Team B</span>
+  </div>
+  <div class="team-chips-scroll" id="chipsB"></div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="main">
+
+  <!-- COL A -->
+  <div class="col-a">
+    <!-- Hero -->
+    <div class="panel team-a">
+      <div class="team-hero a" id="heroA">
+        <div class="team-abbr-circle" id="abbrA">A</div>
+        <div class="hero-info">
+          <div class="hero-name" id="nameA">Select Team A</div>
+          <div class="hero-rec" id="recA"><span style="color:var(--text-3);font-size:12px;">Choose from the bar above</span></div>
+          <div class="hero-pills" id="pillsA"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sliders A -->
+    <div class="panel team-a">
+      <div class="ph"><span class="ph-title">Team A — Stat Thresholds</span></div>
+      <div class="pb">
+        <div class="sliders-col" id="slidersA">
+          <!-- injected by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Starting Five A -->
+    <div class="panel team-a">
+      <div class="ph"><span class="ph-title">Starting Five — PTS / REB / AST</span><span style="font-size:10px;color:var(--text-3);">Click to expand</span></div>
+      <div class="pb" style="padding:14px 16px;"><div class="five-col" id="fiveA"></div></div>
+    </div>
+
+    <!-- Reset A -->
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-a" onclick="resetTeam('a')">↺ Reset A to Avg</button>
+      <button class="btn btn-ghost" onclick="setBest('a')">🔥 Best Case</button>
+      <button class="btn btn-ghost" onclick="setWorst('a')">📉 Worst</button>
+    </div>
+  </div>
+
+  <!-- COL CENTER -->
+  <div class="col-center">
+    <div class="h2h-panel">
+      <div class="h2h-title">Head-to-Head</div>
+
+      <!-- Split bar -->
+      <div class="split-wrap">
+        <div class="split-a" id="splitA" style="width:50%"></div>
+        <div class="split-b" id="splitB" style="width:50%"></div>
+        <span class="split-label-a" id="splitLblA">—</span>
+        <span class="split-label-b" id="splitLblB">—</span>
+        <span class="split-vs">VS</span>
+      </div>
+
+      <!-- Big numbers -->
+      <div class="big-nums">
+        <div class="big-num">
+          <div class="bn-val" id="bigA" style="color:var(--a)">--<span class="bn-pct" style="font-size:20px">%</span></div>
+          <div class="bn-lbl">Win Prob A</div>
+          <div class="bn-name" id="bigNameA">—</div>
+        </div>
+        <div class="vs-divider"><div class="vs-bar"></div><span class="vs-text">VS</span><div class="vs-bar"></div></div>
+        <div class="big-num">
+          <div class="bn-val" id="bigB" style="color:var(--b)">--<span class="bn-pct" style="font-size:20px">%</span></div>
+          <div class="bn-lbl">Win Prob B</div>
+          <div class="bn-name" id="bigNameB">—</div>
+        </div>
+      </div>
+
+      <!-- Verdict -->
+      <div class="verdict-box" id="verdictBox">
+        <span class="verdict-text" id="verdictText">Select both teams to compare</span>
+      </div>
+
+      <!-- Factor compare bars -->
+      <div class="factor-compare">
+        <div class="fc-title">Factor Comparison</div>
+        <div id="factorRows"></div>
+      </div>
+
+      <!-- Stat compare grid -->
+      <div style="margin-top:14px;">
+        <div class="fc-title" style="margin-bottom:8px;">Current Stats</div>
+        <div class="stat-grid" id="statGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COL B -->
+  <div class="col-b">
+    <!-- Hero -->
+    <div class="panel team-b">
+      <div class="team-hero b" id="heroB">
+        <div class="team-abbr-circle" id="abbrB">B</div>
+        <div class="hero-info">
+          <div class="hero-name" id="nameB">Select Team B</div>
+          <div class="hero-rec" id="recB"><span style="color:var(--text-3);font-size:12px;">Choose from the bar above</span></div>
+          <div class="hero-pills" id="pillsB"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sliders B -->
+    <div class="panel team-b">
+      <div class="ph"><span class="ph-title">Team B — Stat Thresholds</span></div>
+      <div class="pb">
+        <div class="sliders-col" id="slidersB"></div>
+      </div>
+    </div>
+
+    <!-- Starting Five B -->
+    <div class="panel team-b">
+      <div class="ph"><span class="ph-title">Starting Five — PTS / REB / AST</span><span style="font-size:10px;color:var(--text-3);">Click to expand</span></div>
+      <div class="pb" style="padding:14px 16px;"><div class="five-col" id="fiveB"></div></div>
+    </div>
+
+    <!-- Reset B -->
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-b" onclick="resetTeam('b')">↺ Reset B to Avg</button>
+      <button class="btn btn-ghost" onclick="setBest('b')">🔥 Best Case</button>
+      <button class="btn btn-ghost" onclick="setWorst('b')">📉 Worst</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const MODEL_DATA = {"model": {"means": [0.46624349103871, 0.34590248019540026, 0.6067004099254792, 25.11038961038961, 36.6948051948052], "stds": [0.05308435150696492, 0.10366298346925605, 0.09700821544312871, 5.9789258561767, 4.380191423910932], "coefs": [-0.045483418137718334, 0.7028130210459365, -0.22100407804849675, 0.5208035356272694, 0.9991018317199373], "intercept": 0.0040262127917735265}, "teams": ["Atlanta Hawks", "Boston Celtics", "Brooklyn Nets", "Chicago Bulls", "Cleveland Cavaliers", "Dallas Mavericks", "Golden State Warriors", "Houston Rockets", "Los Angeles Clippers", "Memphis Grizzlies", "Milwaukee Bucks", "New Orleans Pelicans", "Portland Trail Blazers", "San Antonio Spurs", "Toronto Raptors", "Washington Wizards"], "team_players": {"Atlanta Hawks": ["Jeff Teague", "Al Horford", "Paul Millsap", "DeMarre Carroll", "Kyle Korver"], "Brooklyn Nets": ["Joe Johnson", "Brook Lopez", "Deron Williams", "Thaddeus Young", "Bojan Bogdanovic"], "Boston Celtics": ["Avery Bradley", "Isaiah Thomas", "Evan Turner", "Jared Sullinger", "Marcus Smart"], "Cleveland Cavaliers": ["LeBron James", "JR Smith", "Kyrie Irving", "Iman Shumpert", "Timofey Mozgov"], "Milwaukee Bucks": ["Khris Middleton", "Michael Carter-Williams", "Giannis Antetokounmpo", "Ersan Ilyasova", "O.J. Mayo"], "Chicago Bulls": ["Derrick Rose", "Jimmy Butler", "Pau Gasol", "Mike Dunleavy", "Joakim Noah"], "Toronto Raptors": ["DeMar DeRozan", "Kyle Lowry", "Lou Williams", "Jonas Valanciunas", "Greivis Vasquez"], "Washington Wizards": ["Bradley Beal", "John Wall", "Paul Pierce", "Otto Porter Jr.", "Marcin Gortat"], "Golden State Warriors": ["Stephen Curry", "Klay Thompson", "Draymond Green", "Harrison Barnes", "Andre Iguodala"], "New Orleans Pelicans": ["Anthony Davis", "Eric Gordon", "Ryan Anderson", "Tyreke Evans", "Norris Cole"], "Houston Rockets": ["James Harden", "Josh Smith", "Trevor Ariza", "Dwight Howard", "Corey Brewer"], "Dallas Mavericks": ["Monta Ellis", "Dirk Nowitzki", "J.J. Barea", "Amar'e Stoudemire", "Al-Farouq Aminu"], "San Antonio Spurs": ["Kawhi Leonard", "Tony Parker", "Tim Duncan", "Boris Diaw", "Danny Green"], "Los Angeles Clippers": ["Blake Griffin", "Chris Paul", "Jamal Crawford", "JJ Redick", "Austin Rivers"], "Portland Trail Blazers": ["LaMarcus Aldridge", "Damian Lillard", "Nicolas Batum", "CJ McCollum", "Meyers Leonard"], "Memphis Grizzlies": ["Marc Gasol", "Zach Randolph", "Jeff Green", "Courtney Lee", "Mike Conley"]}, "team_avgs": {"Atlanta Hawks": {"fg_pct": 45.5, "three_pct": 31.9, "close_pct": 61.0, "three_attempts": 28.2, "total_makes": 36.9, "avg_pts": 82.8}, "Brooklyn Nets": {"fg_pct": 46.0, "three_pct": 35.8, "close_pct": 58.3, "three_attempts": 23.3, "total_makes": 36.0, "avg_pts": 80.5}, "Boston Celtics": {"fg_pct": 47.3, "three_pct": 30.5, "close_pct": 67.4, "three_attempts": 20.7, "total_makes": 35.3, "avg_pts": 77.0}, "Cleveland Cavaliers": {"fg_pct": 44.8, "three_pct": 34.9, "close_pct": 59.0, "three_attempts": 28.1, "total_makes": 34.8, "avg_pts": 79.6}, "Milwaukee Bucks": {"fg_pct": 41.4, "three_pct": 29.6, "close_pct": 49.8, "three_attempts": 18.0, "total_makes": 32.4, "avg_pts": 70.2}, "Chicago Bulls": {"fg_pct": 45.5, "three_pct": 37.3, "close_pct": 57.8, "three_attempts": 23.5, "total_makes": 34.6, "avg_pts": 78.0}, "Toronto Raptors": {"fg_pct": 46.3, "three_pct": 29.6, "close_pct": 62.6, "three_attempts": 23.7, "total_makes": 36.7, "avg_pts": 80.0}, "Washington Wizards": {"fg_pct": 46.9, "three_pct": 40.0, "close_pct": 58.8, "three_attempts": 22.2, "total_makes": 37.4, "avg_pts": 84.0}, "Golden State Warriors": {"fg_pct": 48.3, "three_pct": 37.8, "close_pct": 63.9, "three_attempts": 29.8, "total_makes": 38.0, "avg_pts": 87.2}, "New Orleans Pelicans": {"fg_pct": 46.5, "three_pct": 33.5, "close_pct": 55.6, "three_attempts": 21.0, "total_makes": 35.3, "avg_pts": 77.7}, "Houston Rockets": {"fg_pct": 47.9, "three_pct": 34.5, "close_pct": 61.4, "three_attempts": 27.3, "total_makes": 37.3, "avg_pts": 84.1}, "Dallas Mavericks": {"fg_pct": 47.8, "three_pct": 31.1, "close_pct": 64.7, "three_attempts": 24.4, "total_makes": 41.6, "avg_pts": 90.8}, "San Antonio Spurs": {"fg_pct": 48.6, "three_pct": 37.4, "close_pct": 60.6, "three_attempts": 25.9, "total_makes": 38.3, "avg_pts": 86.1}, "Los Angeles Clippers": {"fg_pct": 49.6, "three_pct": 32.6, "close_pct": 67.3, "three_attempts": 25.0, "total_makes": 39.4, "avg_pts": 87.2}, "Portland Trail Blazers": {"fg_pct": 43.4, "three_pct": 34.6, "close_pct": 62.7, "three_attempts": 26.2, "total_makes": 33.4, "avg_pts": 76.0}, "Memphis Grizzlies": {"fg_pct": 45.7, "three_pct": 31.9, "close_pct": 54.6, "three_attempts": 13.8, "total_makes": 35.7, "avg_pts": 75.8}}, "team_records": {"Atlanta Hawks": {"wins": 9, "losses": 7, "games": 16, "win_pct": 56.2}, "Brooklyn Nets": {"wins": 2, "losses": 4, "games": 6, "win_pct": 33.3}, "Boston Celtics": {"wins": 0, "losses": 3, "games": 3, "win_pct": 0.0}, "Cleveland Cavaliers": {"wins": 11, "losses": 8, "games": 19, "win_pct": 57.9}, "Milwaukee Bucks": {"wins": 2, "losses": 3, "games": 5, "win_pct": 40.0}, "Chicago Bulls": {"wins": 5, "losses": 6, "games": 11, "win_pct": 45.5}, "Toronto Raptors": {"wins": 0, "losses": 3, "games": 3, "win_pct": 0.0}, "Washington Wizards": {"wins": 4, "losses": 5, "games": 9, "win_pct": 44.4}, "Golden State Warriors": {"wins": 18, "losses": 2, "games": 20, "win_pct": 90.0}, "New Orleans Pelicans": {"wins": 0, "losses": 3, "games": 3, "win_pct": 0.0}, "Houston Rockets": {"wins": 5, "losses": 12, "games": 17, "win_pct": 29.4}, "Dallas Mavericks": {"wins": 2, "losses": 3, "games": 5, "win_pct": 40.0}, "San Antonio Spurs": {"wins": 5, "losses": 2, "games": 7, "win_pct": 71.4}, "Los Angeles Clippers": {"wins": 7, "losses": 7, "games": 14, "win_pct": 50.0}, "Portland Trail Blazers": {"wins": 3, "losses": 2, "games": 5, "win_pct": 60.0}, "Memphis Grizzlies": {"wins": 4, "losses": 7, "games": 11, "win_pct": 36.4}}, "player_avgs": {"Atlanta Hawks|Dennis Schroder": {"avg_pts": 7.5, "avg_reb": 2.6, "avg_ast": 6.8, "avg_fg_pct": 41.5, "avg_three_pct": 19.8, "avg_attempts": 8.1}, "Brooklyn Nets|Joe Johnson": {"avg_pts": 13.0, "avg_reb": 7.9, "avg_ast": 1.6, "avg_fg_pct": 36.7, "avg_three_pct": 29.3, "avg_attempts": 15.2}, "Brooklyn Nets|Markel Brown": {"avg_pts": 2.0, "avg_reb": 3.8, "avg_ast": 3.3, "avg_fg_pct": 33.3, "avg_three_pct": 0.0, "avg_attempts": 2.5}, "Atlanta Hawks|Al Horford": {"avg_pts": 13.5, "avg_reb": 9.3, "avg_ast": 6.4, "avg_fg_pct": 52.2, "avg_three_pct": 8.3, "avg_attempts": 12.8}, "Atlanta Hawks|Paul Millsap": {"avg_pts": 11.6, "avg_reb": 7.0, "avg_ast": 1.9, "avg_fg_pct": 42.2, "avg_three_pct": 25.7, "avg_attempts": 12.4}, "Brooklyn Nets|Jarrett Jack": {"avg_pts": 10.2, "avg_reb": 3.6, "avg_ast": 3.8, "avg_fg_pct": 51.5, "avg_three_pct": 36.1, "avg_attempts": 8.3}, "Atlanta Hawks|Jeff Teague": {"avg_pts": 13.6, "avg_reb": 5.7, "avg_ast": 6.7, "avg_fg_pct": 41.2, "avg_three_pct": 29.7, "avg_attempts": 14.2}, "Brooklyn Nets|Brook Lopez": {"avg_pts": 14.3, "avg_reb": 3.0, "avg_ast": 5.2, "avg_fg_pct": 55.1, "avg_three_pct": 0.0, "avg_attempts": 13.5}, "Atlanta Hawks|DeMarre Carroll": {"avg_pts": 12.6, "avg_reb": 1.6, "avg_ast": 4.6, "avg_fg_pct": 49.6, "avg_three_pct": 37.6, "avg_attempts": 10.3}, "Atlanta Hawks|Mike Scott": {"avg_pts": 4.6, "avg_reb": 7.3, "avg_ast": 2.2, "avg_fg_pct": 42.1, "avg_three_pct": 13.3, "avg_attempts": 5.2}, "Atlanta Hawks|Kyle Korver": {"avg_pts": 10.2, "avg_reb": 2.4, "avg_ast": 2.7, "avg_fg_pct": 39.7, "avg_three_pct": 35.5, "avg_attempts": 9.4}, "Brooklyn Nets|Deron Williams": {"avg_pts": 10.8, "avg_reb": 4.3, "avg_ast": 1.8, "avg_fg_pct": 35.8, "avg_three_pct": 28.7, "avg_attempts": 10.7}, "Brooklyn Nets|Thaddeus Young": {"avg_pts": 9.7, "avg_reb": 4.7, "avg_ast": 1.5, "avg_fg_pct": 45.4, "avg_three_pct": 0.0, "avg_attempts": 10.2}, "Atlanta Hawks|Shelvin Mack": {"avg_pts": 5.1, "avg_reb": 8.8, "avg_ast": 1.6, "avg_fg_pct": 41.2, "avg_three_pct": 17.3, "avg_attempts": 5.4}, "Brooklyn Nets|Bojan Bogdanovic": {"avg_pts": 9.5, "avg_reb": 7.8, "avg_ast": 6.5, "avg_fg_pct": 39.9, "avg_three_pct": 32.7, "avg_attempts": 9.2}, "Atlanta Hawks|Pero Antic": {"avg_pts": 3.3, "avg_reb": 2.3, "avg_ast": 0.9, "avg_fg_pct": 28.3, "avg_three_pct": 28.1, "avg_attempts": 3.6}, "Brooklyn Nets|Mason Plumlee": {"avg_pts": 4.0, "avg_reb": 4.4, "avg_ast": 2.8, "avg_fg_pct": 83.3, "avg_three_pct": 0.0, "avg_attempts": 2.5}, "Brooklyn Nets|Alan Anderson": {"avg_pts": 10.0, "avg_reb": 4.6, "avg_ast": 3.8, "avg_fg_pct": 63.6, "avg_three_pct": 59.4, "avg_attempts": 6.8}, "Atlanta Hawks|Kent Bazemore": {"avg_pts": 4.1, "avg_reb": 7.3, "avg_ast": 2.4, "avg_fg_pct": 42.0, "avg_three_pct": 18.7, "avg_attempts": 4.2}, "Atlanta Hawks|Mike Muscala": {"avg_pts": 4.2, "avg_reb": 6.5, "avg_ast": 3.3, "avg_fg_pct": 56.2, "avg_three_pct": 10.0, "avg_attempts": 3.2}, "Boston Celtics|Avery Bradley": {"avg_pts": 10.8, "avg_reb": 5.8, "avg_ast": 1.1, "avg_fg_pct": 38.1, "avg_three_pct": 38.3, "avg_attempts": 12.2}, "Cleveland Cavaliers|Kyrie Irving": {"avg_pts": 14.5, "avg_reb": 8.5, "avg_ast": 3.0, "avg_fg_pct": 49.9, "avg_three_pct": 49.2, "avg_attempts": 13.3}, "Boston Celtics|Kelly Olynyk": {"avg_pts": 5.7, "avg_reb": 9.1, "avg_ast": 0.6, "avg_fg_pct": 41.1, "avg_three_pct": 33.3, "avg_attempts": 4.0}, "Boston Celtics|Isaiah Thomas": {"avg_pts": 9.8, "avg_reb": 9.2, "avg_ast": 0.7, "avg_fg_pct": 38.6, "avg_three_pct": 13.6, "avg_attempts": 11.8}, "Cleveland Cavaliers|LeBron James": {"avg_pts": 23.8, "avg_reb": 9.3, "avg_ast": 3.4, "avg_fg_pct": 44.2, "avg_three_pct": 20.3, "avg_attempts": 25.7}, "Boston Celtics|Tyler Zeller": {"avg_pts": 7.5, "avg_reb": 7.0, "avg_ast": 5.1, "avg_fg_pct": 57.9, "avg_three_pct": 0.0, "avg_attempts": 6.5}, "Boston Celtics|Evan Turner": {"avg_pts": 8.5, "avg_reb": 1.5, "avg_ast": 2.7, "avg_fg_pct": 39.3, "avg_three_pct": 50.0, "avg_attempts": 9.2}, "Cleveland Cavaliers|Tristan Thompson": {"avg_pts": 7.6, "avg_reb": 4.4, "avg_ast": 1.3, "avg_fg_pct": 59.1, "avg_three_pct": 0.0, "avg_attempts": 6.4}, "Cleveland Cavaliers|Kevin Love": {"avg_pts": 10.8, "avg_reb": 7.1, "avg_ast": 5.7, "avg_fg_pct": 44.6, "avg_three_pct": 33.8, "avg_attempts": 9.0}, "Boston Celtics|Jonas Jerebko": {"avg_pts": 2.5, "avg_reb": 7.3, "avg_ast": 4.9, "avg_fg_pct": 23.3, "avg_three_pct": 0.0, "avg_attempts": 3.5}, "Boston Celtics|Marcus Smart": {"avg_pts": 7.8, "avg_reb": 7.7, "avg_ast": 3.9, "avg_fg_pct": 48.6, "avg_three_pct": 21.7, "avg_attempts": 7.2}, "Boston Celtics|Jae Crowder": {"avg_pts": 8.2, "avg_reb": 8.5, "avg_ast": 2.2, "avg_fg_pct": 56.9, "avg_three_pct": 25.0, "avg_attempts": 6.8}, "Cleveland Cavaliers|Timofey Mozgov": {"avg_pts": 7.4, "avg_reb": 4.5, "avg_ast": 3.7, "avg_fg_pct": 55.1, "avg_three_pct": 0.0, "avg_attempts": 6.5}, "Boston Celtics|Jared Sullinger": {"avg_pts": 11.2, "avg_reb": 8.0, "avg_ast": 0.9, "avg_fg_pct": 60.8, "avg_three_pct": 18.8, "avg_attempts": 9.0}, "Cleveland Cavaliers|Matthew Dellavedova": {"avg_pts": 6.2, "avg_reb": 1.5, "avg_ast": 3.4, "avg_fg_pct": 43.0, "avg_three_pct": 32.7, "avg_attempts": 6.8}, "Cleveland Cavaliers|JR Smith": {"avg_pts": 12.1, "avg_reb": 1.6, "avg_ast": 6.4, "avg_fg_pct": 41.6, "avg_three_pct": 36.7, "avg_attempts": 11.1}, "Cleveland Cavaliers|Iman Shumpert": {"avg_pts": 7.6, "avg_reb": 5.4, "avg_ast": 4.8, "avg_fg_pct": 37.9, "avg_three_pct": 31.0, "avg_attempts": 7.8}, "Boston Celtics|Brandon Bass": {"avg_pts": 3.5, "avg_reb": 4.3, "avg_ast": 2.9, "avg_fg_pct": 54.2, "avg_three_pct": 0.0, "avg_attempts": 3.5}, "Boston Celtics|Gigi Datome": {"avg_pts": 2.0, "avg_reb": 8.6, "avg_ast": 6.2, "avg_fg_pct": 33.3, "avg_three_pct": 0.0, "avg_attempts": 3.0}, "Milwaukee Bucks|Giannis Antetokounmpo": {"avg_pts": 8.7, "avg_reb": 6.4, "avg_ast": 5.4, "avg_fg_pct": 38.3, "avg_three_pct": 0.0, "avg_attempts": 10.8}, "Chicago Bulls|Joakim Noah": {"avg_pts": 5.2, "avg_reb": 5.8, "avg_ast": 4.3, "avg_fg_pct": 49.9, "avg_three_pct": 0.0, "avg_attempts": 5.6}, "Chicago Bulls|Jimmy Butler": {"avg_pts": 18.0, "avg_reb": 3.1, "avg_ast": 2.9, "avg_fg_pct": 48.0, "avg_three_pct": 39.6, "avg_attempts": 16.5}, "Milwaukee Bucks|Jerryd Bayless": {"avg_pts": 4.3, "avg_reb": 2.6, "avg_ast": 6.9, "avg_fg_pct": 29.0, "avg_three_pct": 6.7, "avg_attempts": 5.5}, "Milwaukee Bucks|Ersan Ilyasova": {"avg_pts": 7.5, "avg_reb": 5.9, "avg_ast": 6.9, "avg_fg_pct": 35.7, "avg_three_pct": 20.6, "avg_attempts": 9.7}, "Chicago Bulls|Pau Gasol": {"avg_pts": 11.2, "avg_reb": 8.6, "avg_ast": 2.1, "avg_fg_pct": 50.0, "avg_three_pct": 0.0, "avg_attempts": 11.0}, "Milwaukee Bucks|Zaza Pachulia": {"avg_pts": 5.3, "avg_reb": 1.6, "avg_ast": 2.3, "avg_fg_pct": 47.0, "avg_three_pct": 0.0, "avg_attempts": 5.5}, "Chicago Bulls|Derrick Rose": {"avg_pts": 17.2, "avg_reb": 2.9, "avg_ast": 6.1, "avg_fg_pct": 43.6, "avg_three_pct": 33.2, "avg_attempts": 17.5}, "Milwaukee Bucks|Michael Carter-Williams": {"avg_pts": 11.0, "avg_reb": 8.1, "avg_ast": 6.0, "avg_fg_pct": 43.8, "avg_three_pct": 0.0, "avg_attempts": 11.8}, "Milwaukee Bucks|John Henson": {"avg_pts": 8.0, "avg_reb": 3.4, "avg_ast": 1.1, "avg_fg_pct": 64.9, "avg_three_pct": 0.0, "avg_attempts": 6.2}, "Chicago Bulls|Nikola Mirotic": {"avg_pts": 4.7, "avg_reb": 6.5, "avg_ast": 0.8, "avg_fg_pct": 35.2, "avg_three_pct": 20.8, "avg_attempts": 5.8}, "Chicago Bulls|Aaron Brooks": {"avg_pts": 4.2, "avg_reb": 2.6, "avg_ast": 6.7, "avg_fg_pct": 38.0, "avg_three_pct": 27.2, "avg_attempts": 4.7}, "Chicago Bulls|Taj Gibson": {"avg_pts": 6.2, "avg_reb": 6.1, "avg_ast": 2.6, "avg_fg_pct": 61.6, "avg_three_pct": 0.0, "avg_attempts": 5.6}, "Milwaukee Bucks|Khris Middleton": {"avg_pts": 13.5, "avg_reb": 7.3, "avg_ast": 4.8, "avg_fg_pct": 39.6, "avg_three_pct": 30.1, "avg_attempts": 14.3}, "Milwaukee Bucks|O.J. Mayo": {"avg_pts": 7.0, "avg_reb": 1.7, "avg_ast": 3.8, "avg_fg_pct": 33.5, "avg_three_pct": 25.0, "avg_attempts": 8.5}, "Milwaukee Bucks|Jared Dudley": {"avg_pts": 6.0, "avg_reb": 9.2, "avg_ast": 2.1, "avg_fg_pct": 52.1, "avg_three_pct": 56.9, "avg_attempts": 4.5}, "Chicago Bulls|Mike Dunleavy": {"avg_pts": 9.4, "avg_reb": 9.4, "avg_ast": 2.5, "avg_fg_pct": 51.5, "avg_three_pct": 43.6, "avg_attempts": 6.9}, "Milwaukee Bucks|Miles Plumlee": {"avg_pts": 2.0, "avg_reb": 1.8, "avg_ast": 0.4, "avg_fg_pct": 12.5, "avg_three_pct": 0.0, "avg_attempts": 8.0}, "Chicago Bulls|Kirk Hinrich": {"avg_pts": 3.0, "avg_reb": 5.3, "avg_ast": 0.8, "avg_fg_pct": 42.5, "avg_three_pct": 50.0, "avg_attempts": 2.2}, "Milwaukee Bucks|Jorge Gutierrez": {"avg_pts": 2.0, "avg_reb": 6.3, "avg_ast": 0.6, "avg_fg_pct": 50.0, "avg_three_pct": 0.0, "avg_attempts": 2.0}, "Chicago Bulls|Nazr Mohammed": {"avg_pts": 1.3, "avg_reb": 8.1, "avg_ast": 1.3, "avg_fg_pct": 27.8, "avg_three_pct": 0.0, "avg_attempts": 2.3}, "Chicago Bulls|Tony Snell": {"avg_pts": 3.5, "avg_reb": 3.8, "avg_ast": 1.4, "avg_fg_pct": 24.9, "avg_three_pct": 28.8, "avg_attempts": 3.9}, "Toronto Raptors|Tyler Hansbrough": {"avg_pts": 2.0, "avg_reb": 8.9, "avg_ast": 2.0, "avg_fg_pct": 50.0, "avg_three_pct": 0.0, "avg_attempts": 2.0}, "Toronto Raptors|DeMar DeRozan": {"avg_pts": 16.8, "avg_reb": 7.4, "avg_ast": 2.6, "avg_fg_pct": 44.6, "avg_three_pct": 12.5, "avg_attempts": 18.5}, "Washington Wizards|Kevin Seraphin": {"avg_pts": 5.0, "avg_reb": 4.7, "avg_ast": 5.2, "avg_fg_pct": 40.6, "avg_three_pct": 0.0, "avg_attempts": 5.0}, "Washington Wizards|Nene": {"avg_pts": 6.8, "avg_reb": 7.9, "avg_ast": 0.5, "avg_fg_pct": 43.3, "avg_three_pct": 0.0, "avg_attempts": 6.9}, "Toronto Raptors|Jonas Valanciunas": {"avg_pts": 9.5, "avg_reb": 6.7, "avg_ast": 4.6, "avg_fg_pct": 53.6, "avg_three_pct": 0.0, "avg_attempts": 8.8}, "Washington Wizards|Bradley Beal": {"avg_pts": 18.5, "avg_reb": 4.6, "avg_ast": 0.9, "avg_fg_pct": 43.4, "avg_three_pct": 38.8, "avg_attempts": 18.4}, "Toronto Raptors|Amir Johnson": {"avg_pts": 10.0, "avg_reb": 4.1, "avg_ast": 5.0, "avg_fg_pct": 69.6, "avg_three_pct": 0.0, "avg_attempts": 7.0}, "Washington Wizards|John Wall": {"avg_pts": 12.7, "avg_reb": 4.4, "avg_ast": 3.4, "avg_fg_pct": 43.2, "avg_three_pct": 14.3, "avg_attempts": 15.0}, "Washington Wizards|Otto Porter Jr.": {"avg_pts": 9.0, "avg_reb": 7.0, "avg_ast": 5.4, "avg_fg_pct": 46.0, "avg_three_pct": 34.8, "avg_attempts": 8.4}, "Toronto Raptors|Patrick Patterson": {"avg_pts": 9.2, "avg_reb": 9.1, "avg_ast": 3.1, "avg_fg_pct": 64.6, "avg_three_pct": 60.0, "avg_attempts": 6.0}, "Toronto Raptors|Kyle Lowry": {"avg_pts": 10.2, "avg_reb": 1.5, "avg_ast": 2.0, "avg_fg_pct": 34.8, "avg_three_pct": 16.7, "avg_attempts": 12.8}, "Washington Wizards|Drew Gooden": {"avg_pts": 5.8, "avg_reb": 1.8, "avg_ast": 6.0, "avg_fg_pct": 39.7, "avg_three_pct": 35.8, "avg_attempts": 5.7}, "Washington Wizards|Marcin Gortat": {"avg_pts": 10.8, "avg_reb": 5.6, "avg_ast": 3.8, "avg_fg_pct": 62.5, "avg_three_pct": 0.0, "avg_attempts": 8.2}, "Washington Wizards|Ramon Sessions": {"avg_pts": 6.2, "avg_reb": 1.9, "avg_ast": 1.4, "avg_fg_pct": 33.2, "avg_three_pct": 29.3, "avg_attempts": 6.7}, "Toronto Raptors|Terrence Ross": {"avg_pts": 7.0, "avg_reb": 6.3, "avg_ast": 5.8, "avg_fg_pct": 40.2, "avg_three_pct": 39.6, "avg_attempts": 7.0}, "Toronto Raptors|Greivis Vasquez": {"avg_pts": 6.8, "avg_reb": 3.4, "avg_ast": 6.9, "avg_fg_pct": 37.9, "avg_three_pct": 28.7, "avg_attempts": 7.2}, "Toronto Raptors|James Johnson": {"avg_pts": 2.0, "avg_reb": 3.7, "avg_ast": 1.4, "avg_fg_pct": 33.3, "avg_three_pct": 0.0, "avg_attempts": 3.0}, "Toronto Raptors|Lou Williams": {"avg_pts": 9.0, "avg_reb": 9.0, "avg_ast": 3.9, "avg_fg_pct": 35.1, "avg_three_pct": 14.6, "avg_attempts": 11.8}, "Washington Wizards|Paul Pierce": {"avg_pts": 12.9, "avg_reb": 3.4, "avg_ast": 6.7, "avg_fg_pct": 48.3, "avg_three_pct": 50.1, "avg_attempts": 9.6}, "Toronto Raptors|Greg Stiemsma": {"avg_pts": 4.0, "avg_reb": 4.8, "avg_ast": 6.4, "avg_fg_pct": 100.0, "avg_three_pct": 0.0, "avg_attempts": 2.0}, "Washington Wizards|Martell Webster": {"avg_pts": 2.0, "avg_reb": 6.9, "avg_ast": 0.8, "avg_fg_pct": 50.0, "avg_three_pct": 0.0, "avg_attempts": 2.0}, "Golden State Warriors|Stephen Curry": {"avg_pts": 23.7, "avg_reb": 4.4, "avg_ast": 1.7, "avg_fg_pct": 47.7, "avg_three_pct": 43.4, "avg_attempts": 20.0}, "Golden State Warriors|Andrew Bogut": {"avg_pts": 4.9, "avg_reb": 5.7, "avg_ast": 3.3, "avg_fg_pct": 55.4, "avg_three_pct": 0.0, "avg_attempts": 4.1}, "Golden State Warriors|Harrison Barnes": {"avg_pts": 9.3, "avg_reb": 2.2, "avg_ast": 3.2, "avg_fg_pct": 45.9, "avg_three_pct": 29.8, "avg_attempts": 9.1}, "Golden State Warriors|Andre Iguodala": {"avg_pts": 9.1, "avg_reb": 6.0, "avg_ast": 3.3, "avg_fg_pct": 50.2, "avg_three_pct": 30.9, "avg_attempts": 8.0}, "New Orleans Pelicans|Quincy Pondexter": {"avg_pts": 5.8, "avg_reb": 1.6, "avg_ast": 0.6, "avg_fg_pct": 28.6, "avg_three_pct": 10.7, "avg_attempts": 6.5}, "New Orleans Pelicans|Alexis Ajinca": {"avg_pts": 4.0, "avg_reb": 9.4, "avg_ast": 0.7, "avg_fg_pct": 100.0, "avg_three_pct": 0.0, "avg_attempts": 2.0}, "New Orleans Pelicans|Norris Cole": {"avg_pts": 8.2, "avg_reb": 3.4, "avg_ast": 6.2, "avg_fg_pct": 38.3, "avg_three_pct": 20.8, "avg_attempts": 8.5}, "New Orleans Pelicans|Anthony Davis": {"avg_pts": 23.5, "avg_reb": 2.5, "avg_ast": 1.9, "avg_fg_pct": 57.0, "avg_three_pct": 0.0, "avg_attempts": 20.8}, "Golden State Warriors|Klay Thompson": {"avg_pts": 16.9, "avg_reb": 8.3, "avg_ast": 4.3, "avg_fg_pct": 46.8, "avg_three_pct": 40.1, "avg_attempts": 15.0}, "Golden State Warriors|Draymond Green": {"avg_pts": 10.7, "avg_reb": 8.3, "avg_ast": 6.4, "avg_fg_pct": 43.5, "avg_three_pct": 23.2, "avg_attempts": 10.7}, "Golden State Warriors|Shaun Livingston": {"avg_pts": 4.0, "avg_reb": 9.1, "avg_ast": 0.4, "avg_fg_pct": 51.2, "avg_three_pct": 0.0, "avg_attempts": 3.6}, "New Orleans Pelicans|Dante Cunningham": {"avg_pts": 4.5, "avg_reb": 5.3, "avg_ast": 4.9, "avg_fg_pct": 87.5, "avg_three_pct": 0.0, "avg_attempts": 2.5}, "New Orleans Pelicans|Eric Gordon": {"avg_pts": 17.2, "avg_reb": 8.6, "avg_ast": 5.0, "avg_fg_pct": 42.9, "avg_three_pct": 41.7, "avg_attempts": 15.0}, "Golden State Warriors|Leandro Barbosa": {"avg_pts": 4.8, "avg_reb": 2.2, "avg_ast": 4.4, "avg_fg_pct": 44.6, "avg_three_pct": 26.3, "avg_attempts": 4.6}, "New Orleans Pelicans|Ryan Anderson": {"avg_pts": 9.2, "avg_reb": 4.0, "avg_ast": 5.4, "avg_fg_pct": 37.5, "avg_three_pct": 39.2, "avg_attempts": 8.8}, "New Orleans Pelicans|Tyreke Evans": {"avg_pts": 7.5, "avg_reb": 1.8, "avg_ast": 1.6, "avg_fg_pct": 29.9, "avg_three_pct": 12.5, "avg_attempts": 8.8}, "New Orleans Pelicans|Omer Asik": {"avg_pts": 1.0, "avg_reb": 2.1, "avg_ast": 3.2, "avg_fg_pct": 20.8, "avg_three_pct": 0.0, "avg_attempts": 1.8}, "Golden State Warriors|Festus Ezeli": {"avg_pts": 3.9, "avg_reb": 9.3, "avg_ast": 4.0, "avg_fg_pct": 70.1, "avg_three_pct": 0.0, "avg_attempts": 2.8}, "New Orleans Pelicans|Jrue Holiday": {"avg_pts": 5.0, "avg_reb": 3.2, "avg_ast": 3.5, "avg_fg_pct": 38.7, "avg_three_pct": 16.7, "avg_attempts": 6.0}, "Golden State Warriors|Marreese Speights": {"avg_pts": 3.1, "avg_reb": 3.5, "avg_ast": 1.2, "avg_fg_pct": 27.0, "avg_three_pct": 0.0, "avg_attempts": 4.0}, "Houston Rockets|Jason Terry": {"avg_pts": 8.4, "avg_reb": 7.9, "avg_ast": 5.8, "avg_fg_pct": 44.0, "avg_three_pct": 34.0, "avg_attempts": 7.6}, "Dallas Mavericks|Devin Harris": {"avg_pts": 4.0, "avg_reb": 2.7, "avg_ast": 4.6, "avg_fg_pct": 38.5, "avg_three_pct": 0.0, "avg_attempts": 5.2}, "Dallas Mavericks|Chandler Parsons": {"avg_pts": 10.0, "avg_reb": 1.6, "avg_ast": 4.1, "avg_fg_pct": 35.7, "avg_three_pct": 0.0, "avg_attempts": 14.0}, "Dallas Mavericks|Dirk Nowitzki": {"avg_pts": 16.0, "avg_reb": 6.6, "avg_ast": 2.4, "avg_fg_pct": 46.1, "avg_three_pct": 28.6, "avg_attempts": 16.8}, "Houston Rockets|Josh Smith": {"avg_pts": 11.6, "avg_reb": 4.3, "avg_ast": 3.2, "avg_fg_pct": 45.5, "avg_three_pct": 31.2, "avg_attempts": 10.9}, "Houston Rockets|Clint Capela": {"avg_pts": 3.5, "avg_reb": 3.2, "avg_ast": 6.3, "avg_fg_pct": 78.6, "avg_three_pct": 0.0, "avg_attempts": 2.4}, "Houston Rockets|Dwight Howard": {"avg_pts": 12.4, "avg_reb": 6.8, "avg_ast": 2.6, "avg_fg_pct": 63.3, "avg_three_pct": 0.0, "avg_attempts": 9.8}, "Dallas Mavericks|Monta Ellis": {"avg_pts": 23.0, "avg_reb": 6.3, "avg_ast": 2.6, "avg_fg_pct": 47.3, "avg_three_pct": 39.4, "avg_attempts": 21.6}, "Houston Rockets|James Harden": {"avg_pts": 17.5, "avg_reb": 4.1, "avg_ast": 5.2, "avg_fg_pct": 45.2, "avg_three_pct": 36.2, "avg_attempts": 16.1}, "Houston Rockets|Corey Brewer": {"avg_pts": 9.2, "avg_reb": 8.8, "avg_ast": 6.3, "avg_fg_pct": 43.9, "avg_three_pct": 26.4, "avg_attempts": 9.1}, "Houston Rockets|Terrence Jones": {"avg_pts": 8.1, "avg_reb": 8.6, "avg_ast": 3.6, "avg_fg_pct": 44.6, "avg_three_pct": 14.7, "avg_attempts": 8.3}, "Dallas Mavericks|J.J. Barea": {"avg_pts": 10.8, "avg_reb": 2.1, "avg_ast": 2.7, "avg_fg_pct": 49.1, "avg_three_pct": 18.3, "avg_attempts": 10.4}, "Dallas Mavericks|Tyson Chandler": {"avg_pts": 7.6, "avg_reb": 9.3, "avg_ast": 5.6, "avg_fg_pct": 74.3, "avg_three_pct": 0.0, "avg_attempts": 5.2}, "Dallas Mavericks|Rajon Rondo": {"avg_pts": 9.5, "avg_reb": 7.9, "avg_ast": 3.4, "avg_fg_pct": 48.3, "avg_three_pct": 25.0, "avg_attempts": 9.5}, "Dallas Mavericks|Al-Farouq Aminu": {"avg_pts": 8.2, "avg_reb": 7.2, "avg_ast": 1.7, "avg_fg_pct": 66.6, "avg_three_pct": 65.3, "avg_attempts": 5.4}, "Dallas Mavericks|Amar'e Stoudemire": {"avg_pts": 6.0, "avg_reb": 2.2, "avg_ast": 0.9, "avg_fg_pct": 56.0, "avg_three_pct": 0.0, "avg_attempts": 6.0}, "Dallas Mavericks|Richard Jefferson": {"avg_pts": 4.3, "avg_reb": 2.0, "avg_ast": 4.1, "avg_fg_pct": 38.9, "avg_three_pct": 38.9, "avg_attempts": 4.3}, "Dallas Mavericks|Charlie Villanueva": {"avg_pts": 6.0, "avg_reb": 4.0, "avg_ast": 2.9, "avg_fg_pct": 48.0, "avg_three_pct": 44.3, "avg_attempts": 4.8}, "Dallas Mavericks|Raymond Felton": {"avg_pts": 2.7, "avg_reb": 3.6, "avg_ast": 6.8, "avg_fg_pct": 22.2, "avg_three_pct": 0.0, "avg_attempts": 5.0}, "Houston Rockets|Trevor Ariza": {"avg_pts": 10.9, "avg_reb": 7.2, "avg_ast": 1.3, "avg_fg_pct": 43.3, "avg_three_pct": 37.3, "avg_attempts": 10.0}, "Houston Rockets|Pablo Prigioni": {"avg_pts": 2.9, "avg_reb": 6.9, "avg_ast": 2.5, "avg_fg_pct": 30.9, "avg_three_pct": 29.2, "avg_attempts": 3.4}, "San Antonio Spurs|Danny Green": {"avg_pts": 7.7, "avg_reb": 6.9, "avg_ast": 2.0, "avg_fg_pct": 37.0, "avg_three_pct": 31.7, "avg_attempts": 8.1}, "Los Angeles Clippers|Chris Paul": {"avg_pts": 18.1, "avg_reb": 6.4, "avg_ast": 4.1, "avg_fg_pct": 50.5, "avg_three_pct": 40.6, "avg_attempts": 15.5}, "Los Angeles Clippers|Blake Griffin": {"avg_pts": 20.1, "avg_reb": 4.6, "avg_ast": 3.1, "avg_fg_pct": 56.4, "avg_three_pct": 7.1, "avg_attempts": 17.9}, "San Antonio Spurs|Tiago Splitter": {"avg_pts": 2.6, "avg_reb": 8.3, "avg_ast": 4.9, "avg_fg_pct": 51.2, "avg_three_pct": 0.0, "avg_attempts": 2.4}, "San Antonio Spurs|Tim Duncan": {"avg_pts": 15.1, "avg_reb": 6.4, "avg_ast": 5.8, "avg_fg_pct": 61.9, "avg_three_pct": 0.0, "avg_attempts": 11.6}, "San Antonio Spurs|Aron Baynes": {"avg_pts": 2.0, "avg_reb": 1.6, "avg_ast": 2.9, "avg_fg_pct": 30.0, "avg_three_pct": 0.0, "avg_attempts": 2.7}, "San Antonio Spurs|Kawhi Leonard": {"avg_pts": 16.4, "avg_reb": 4.2, "avg_ast": 4.2, "avg_fg_pct": 50.0, "avg_three_pct": 40.7, "avg_attempts": 14.6}, "Los Angeles Clippers|Matt Barnes": {"avg_pts": 6.6, "avg_reb": 4.9, "avg_ast": 2.3, "avg_fg_pct": 40.6, "avg_three_pct": 28.8, "avg_attempts": 6.5}, "San Antonio Spurs|Boris Diaw": {"avg_pts": 10.3, "avg_reb": 8.6, "avg_ast": 2.3, "avg_fg_pct": 51.1, "avg_three_pct": 20.2, "avg_attempts": 10.0}, "Los Angeles Clippers|DeAndre Jordan": {"avg_pts": 8.3, "avg_reb": 3.9, "avg_ast": 5.8, "avg_fg_pct": 76.0, "avg_three_pct": 0.0, "avg_attempts": 5.6}, "San Antonio Spurs|Tony Parker": {"avg_pts": 9.4, "avg_reb": 7.2, "avg_ast": 5.3, "avg_fg_pct": 35.3, "avg_three_pct": 0.0, "avg_attempts": 11.9}, "San Antonio Spurs|Cory Joseph": {"avg_pts": 3.3, "avg_reb": 2.2, "avg_ast": 1.9, "avg_fg_pct": 83.3, "avg_three_pct": 0.0, "avg_attempts": 2.0}, "San Antonio Spurs|Manu Ginobili": {"avg_pts": 5.4, "avg_reb": 2.8, "avg_ast": 3.5, "avg_fg_pct": 40.7, "avg_three_pct": 31.9, "avg_attempts": 5.6}, "Los Angeles Clippers|Glen Davis": {"avg_pts": 2.4, "avg_reb": 5.3, "avg_ast": 4.6, "avg_fg_pct": 51.9, "avg_three_pct": 0.0, "avg_attempts": 2.1}, "San Antonio Spurs|Marco Belinelli": {"avg_pts": 7.7, "avg_reb": 8.1, "avg_ast": 6.5, "avg_fg_pct": 42.8, "avg_three_pct": 47.2, "avg_attempts": 5.6}, "Los Angeles Clippers|Jamal Crawford": {"avg_pts": 10.7, "avg_reb": 2.8, "avg_ast": 6.0, "avg_fg_pct": 38.5, "avg_three_pct": 23.4, "avg_attempts": 12.4}, "Los Angeles Clippers|Austin Rivers": {"avg_pts": 7.5, "avg_reb": 1.5, "avg_ast": 6.3, "avg_fg_pct": 43.3, "avg_three_pct": 20.5, "avg_attempts": 6.9}, "San Antonio Spurs|Patty Mills": {"avg_pts": 8.3, "avg_reb": 2.1, "avg_ast": 1.9, "avg_fg_pct": 54.1, "avg_three_pct": 57.9, "avg_attempts": 5.9}, "Los Angeles Clippers|Lester Hudson": {"avg_pts": 2.3, "avg_reb": 7.7, "avg_ast": 1.0, "avg_fg_pct": 38.9, "avg_three_pct": 25.0, "avg_attempts": 2.0}, "Los Angeles Clippers|Spencer Hawes": {"avg_pts": 4.2, "avg_reb": 5.1, "avg_ast": 2.1, "avg_fg_pct": 57.6, "avg_three_pct": 30.0, "avg_attempts": 3.4}, "Los Angeles Clippers|Dahntay Jones": {"avg_pts": 2.0, "avg_reb": 2.7, "avg_ast": 5.6, "avg_fg_pct": 100.0, "avg_three_pct": 0.0, "avg_attempts": 1.0}, "Los Angeles Clippers|JJ Redick": {"avg_pts": 12.5, "avg_reb": 3.2, "avg_ast": 4.3, "avg_fg_pct": 43.2, "avg_three_pct": 37.8, "avg_attempts": 11.4}, "Portland Trail Blazers|Allen Crabbe": {"avg_pts": 5.0, "avg_reb": 1.9, "avg_ast": 2.1, "avg_fg_pct": 100.0, "avg_three_pct": 100.0, "avg_attempts": 2.0}, "Memphis Grizzlies|Marc Gasol": {"avg_pts": 12.9, "avg_reb": 8.7, "avg_ast": 5.5, "avg_fg_pct": 43.0, "avg_three_pct": 0.0, "avg_attempts": 15.4}, "Memphis Grizzlies|Zach Randolph": {"avg_pts": 13.0, "avg_reb": 1.8, "avg_ast": 1.1, "avg_fg_pct": 48.0, "avg_three_pct": 9.1, "avg_attempts": 13.8}, "Portland Trail Blazers|LaMarcus Aldridge": {"avg_pts": 15.4, "avg_reb": 7.3, "avg_ast": 2.0, "avg_fg_pct": 35.4, "avg_three_pct": 18.0, "avg_attempts": 20.6}, "Memphis Grizzlies|Mike Conley": {"avg_pts": 11.5, "avg_reb": 4.3, "avg_ast": 3.7, "avg_fg_pct": 45.9, "avg_three_pct": 27.9, "avg_attempts": 11.2}, "Memphis Grizzlies|Beno Udrih": {"avg_pts": 6.6, "avg_reb": 7.4, "avg_ast": 5.5, "avg_fg_pct": 43.1, "avg_three_pct": 28.3, "avg_attempts": 6.8}, "Memphis Grizzlies|Jeff Green": {"avg_pts": 6.9, "avg_reb": 5.0, "avg_ast": 1.3, "avg_fg_pct": 37.4, "avg_three_pct": 21.2, "avg_attempts": 8.9}, "Portland Trail Blazers|Damian Lillard": {"avg_pts": 16.6, "avg_reb": 6.1, "avg_ast": 6.9, "avg_fg_pct": 42.3, "avg_three_pct": 16.2, "avg_attempts": 18.2}, "Portland Trail Blazers|Chris Kaman": {"avg_pts": 4.0, "avg_reb": 3.9, "avg_ast": 0.6, "avg_fg_pct": 55.0, "avg_three_pct": 0.0, "avg_attempts": 3.5}, "Memphis Grizzlies|Tony Allen": {"avg_pts": 5.7, "avg_reb": 5.7, "avg_ast": 5.3, "avg_fg_pct": 51.9, "avg_three_pct": 5.0, "avg_attempts": 5.5}, "Memphis Grizzlies|Kosta Koufos": {"avg_pts": 3.4, "avg_reb": 5.1, "avg_ast": 5.0, "avg_fg_pct": 58.0, "avg_three_pct": 0.0, "avg_attempts": 3.0}, "Portland Trail Blazers|CJ McCollum": {"avg_pts": 15.0, "avg_reb": 5.5, "avg_ast": 3.5, "avg_fg_pct": 48.1, "avg_three_pct": 42.7, "avg_attempts": 12.0}, "Portland Trail Blazers|Nicolas Batum": {"avg_pts": 12.2, "avg_reb": 9.3, "avg_ast": 6.3, "avg_fg_pct": 34.9, "avg_three_pct": 31.2, "avg_attempts": 13.2}, "Portland Trail Blazers|Robin Lopez": {"avg_pts": 3.6, "avg_reb": 6.1, "avg_ast": 4.1, "avg_fg_pct": 66.7, "avg_three_pct": 0.0, "avg_attempts": 2.8}, "Memphis Grizzlies|Courtney Lee": {"avg_pts": 11.3, "avg_reb": 9.2, "avg_ast": 1.1, "avg_fg_pct": 59.0, "avg_three_pct": 48.5, "avg_attempts": 8.6}, "Portland Trail Blazers|Meyers Leonard": {"avg_pts": 9.5, "avg_reb": 3.8, "avg_ast": 5.9, "avg_fg_pct": 68.3, "avg_three_pct": 81.7, "avg_attempts": 5.0}, "Memphis Grizzlies|Vince Carter": {"avg_pts": 5.5, "avg_reb": 5.6, "avg_ast": 0.8, "avg_fg_pct": 45.0, "avg_three_pct": 16.1, "avg_attempts": 5.8}, "Memphis Grizzlies|Nick Calathes": {"avg_pts": 5.0, "avg_reb": 4.8, "avg_ast": 2.7, "avg_fg_pct": 37.9, "avg_three_pct": 21.7, "avg_attempts": 5.5}, "Washington Wizards|Garrett Temple": {"avg_pts": 0.7, "avg_reb": 1.8, "avg_ast": 1.9, "avg_fg_pct": 8.3, "avg_three_pct": 0.0, "avg_attempts": 2.0}, "Washington Wizards|Will Bynum": {"avg_pts": 5.0, "avg_reb": 2.1, "avg_ast": 5.6, "avg_fg_pct": 38.9, "avg_three_pct": 16.7, "avg_attempts": 4.3}, "Cleveland Cavaliers|Kendrick Perkins": {"avg_pts": 1.0, "avg_reb": 3.3, "avg_ast": 4.6, "avg_fg_pct": 37.5, "avg_three_pct": 0.0, "avg_attempts": 1.8}, "Chicago Bulls|E'Twaun Moore": {"avg_pts": 1.7, "avg_reb": 3.9, "avg_ast": 4.9, "avg_fg_pct": 33.3, "avg_three_pct": 33.3, "avg_attempts": 1.7}, "Golden State Warriors|David Lee": {"avg_pts": 2.9, "avg_reb": 2.6, "avg_ast": 1.5, "avg_fg_pct": 36.6, "avg_three_pct": 0.0, "avg_attempts": 3.5}, "Memphis Grizzlies|Jon Leuer": {"avg_pts": 2.0, "avg_reb": 1.6, "avg_ast": 4.8, "avg_fg_pct": 100.0, "avg_three_pct": 0.0, "avg_attempts": 1.0}, "Golden State Warriors|James Michael McAdoo": {"avg_pts": 2.0, "avg_reb": 2.3, "avg_ast": 2.1, "avg_fg_pct": 50.0, "avg_three_pct": 0.0, "avg_attempts": 1.5}, "Los Angeles Clippers|Ekpe Udoh": {"avg_pts": 2.0, "avg_reb": 8.7, "avg_ast": 2.1, "avg_fg_pct": 33.3, "avg_three_pct": 0.0, "avg_attempts": 3.0}, "Houston Rockets|Kostas Papanikolaou": {"avg_pts": 0.7, "avg_reb": 4.0, "avg_ast": 4.8, "avg_fg_pct": 16.7, "avg_three_pct": 0.0, "avg_attempts": 1.3}, "Houston Rockets|Nick Johnson": {"avg_pts": 1.8, "avg_reb": 5.9, "avg_ast": 7.0, "avg_fg_pct": 19.0, "avg_three_pct": 20.0, "avg_attempts": 2.6}, "Cleveland Cavaliers|Shawn Marion": {"avg_pts": 0.7, "avg_reb": 6.2, "avg_ast": 2.8, "avg_fg_pct": 33.3, "avg_three_pct": 0.0, "avg_attempts": 1.7}, "Cleveland Cavaliers|Joe Harris": {"avg_pts": 1.7, "avg_reb": 7.1, "avg_ast": 3.8, "avg_fg_pct": 33.3, "avg_three_pct": 33.3, "avg_attempts": 2.0}, "Atlanta Hawks|John Jenkins": {"avg_pts": 5.0, "avg_reb": 2.6, "avg_ast": 4.2, "avg_fg_pct": 40.0, "avg_three_pct": 33.3, "avg_attempts": 3.0}, "Cleveland Cavaliers|James Jones": {"avg_pts": 3.9, "avg_reb": 7.5, "avg_ast": 1.9, "avg_fg_pct": 26.5, "avg_three_pct": 25.8, "avg_attempts": 3.9}, "Brooklyn Nets|Mirza Teletovic": {"avg_pts": 0.0, "avg_reb": 8.9, "avg_ast": 5.3, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 2.5}, "Brooklyn Nets|Earl Clark": {"avg_pts": 3.0, "avg_reb": 7.9, "avg_ast": 1.7, "avg_fg_pct": 22.5, "avg_three_pct": 75.0, "avg_attempts": 4.5}, "Atlanta Hawks|Elton Brand": {"avg_pts": 0.0, "avg_reb": 4.9, "avg_ast": 0.6, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 1.0}, "Brooklyn Nets|Jerome Jordan": {"avg_pts": 0.0, "avg_reb": 7.7, "avg_ast": 1.9, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 2.0}, "Boston Celtics|Phil Pressey": {"avg_pts": 0.0, "avg_reb": 2.5, "avg_ast": 0.5, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 1.5}, "Milwaukee Bucks|Tyler Ennis": {"avg_pts": 5.0, "avg_reb": 3.7, "avg_ast": 3.2, "avg_fg_pct": 22.2, "avg_three_pct": 20.0, "avg_attempts": 9.0}, "Milwaukee Bucks|Johnny O'Bryant III": {"avg_pts": 6.0, "avg_reb": 7.0, "avg_ast": 5.7, "avg_fg_pct": 42.9, "avg_three_pct": 0.0, "avg_attempts": 7.0}, "Chicago Bulls|Doug McDermott": {"avg_pts": 3.0, "avg_reb": 2.9, "avg_ast": 3.4, "avg_fg_pct": 33.3, "avg_three_pct": 50.0, "avg_attempts": 3.0}, "Los Angeles Clippers|Hedo Turkoglu": {"avg_pts": 1.2, "avg_reb": 1.6, "avg_ast": 1.4, "avg_fg_pct": 29.2, "avg_three_pct": 18.8, "avg_attempts": 2.1}, "Portland Trail Blazers|Tim Frazier": {"avg_pts": 0.0, "avg_reb": 8.9, "avg_ast": 4.5, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 1.0}, "Portland Trail Blazers|Arron Afflalo": {"avg_pts": 1.7, "avg_reb": 8.5, "avg_ast": 1.7, "avg_fg_pct": 16.7, "avg_three_pct": 16.7, "avg_attempts": 3.3}, "Houston Rockets|Joey Dorsey": {"avg_pts": 0.0, "avg_reb": 5.5, "avg_ast": 5.2, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 1.0}, "Cleveland Cavaliers|Brendan Haywood": {"avg_pts": 0.0, "avg_reb": 5.9, "avg_ast": 6.5, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 1.0}, "Golden State Warriors|Brandon Rush": {"avg_pts": 3.0, "avg_reb": 6.8, "avg_ast": 2.8, "avg_fg_pct": 20.0, "avg_three_pct": 50.0, "avg_attempts": 5.0}, "Washington Wizards|Kris Humphries": {"avg_pts": 2.0, "avg_reb": 2.3, "avg_ast": 1.5, "avg_fg_pct": 100.0, "avg_three_pct": 0.0, "avg_attempts": 1.0}, "Portland Trail Blazers|Steve Blake": {"avg_pts": 1.2, "avg_reb": 1.9, "avg_ast": 0.4, "avg_fg_pct": 12.5, "avg_three_pct": 12.5, "avg_attempts": 2.8}, "Memphis Grizzlies|Jordan Adams": {"avg_pts": 1.7, "avg_reb": 6.7, "avg_ast": 1.8, "avg_fg_pct": 66.7, "avg_three_pct": 33.3, "avg_attempts": 1.0}, "Brooklyn Nets|Darius Morris": {"avg_pts": 0.0, "avg_reb": 9.5, "avg_ast": 6.4, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 1.0}, "Dallas Mavericks|Dwight Powell": {"avg_pts": 0.0, "avg_reb": 2.4, "avg_ast": 3.2, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 1.0}, "San Antonio Spurs|Matt Bonner": {"avg_pts": 1.5, "avg_reb": 8.7, "avg_ast": 5.2, "avg_fg_pct": 17.5, "avg_three_pct": 17.5, "avg_attempts": 2.5}, "Golden State Warriors|Justin Holiday": {"avg_pts": 1.5, "avg_reb": 6.8, "avg_ast": 6.7, "avg_fg_pct": 50.0, "avg_three_pct": 50.0, "avg_attempts": 1.0}, "Memphis Grizzlies|JaMychal Green": {"avg_pts": 0.0, "avg_reb": 5.4, "avg_ast": 5.6, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 2.0}, "Cleveland Cavaliers|Mike Miller": {"avg_pts": 2.2, "avg_reb": 8.8, "avg_ast": 5.2, "avg_fg_pct": 62.5, "avg_three_pct": 62.5, "avg_attempts": 1.2}, "Washington Wizards|Rasual Butler": {"avg_pts": 0.0, "avg_reb": 4.5, "avg_ast": 5.5, "avg_fg_pct": 0.0, "avg_three_pct": 0.0, "avg_attempts": 1.0}}};
+const TEAM_COLORS = {"Atlanta Hawks": {"primary": "#C8102E", "secondary": "#FDB927", "abbr": "ATL"}, "Boston Celtics": {"primary": "#007A33", "secondary": "#BA9653", "abbr": "BOS"}, "Brooklyn Nets": {"primary": "#777777", "secondary": "#FFFFFF", "abbr": "BKN"}, "Chicago Bulls": {"primary": "#CE1141", "secondary": "#000000", "abbr": "CHI"}, "Cleveland Cavaliers": {"primary": "#6F263D", "secondary": "#FFB81C", "abbr": "CLE"}, "Dallas Mavericks": {"primary": "#00538C", "secondary": "#002B5E", "abbr": "DAL"}, "Golden State Warriors": {"primary": "#FFC72C", "secondary": "#1D428A", "abbr": "GSW"}, "Houston Rockets": {"primary": "#CE1141", "secondary": "#000000", "abbr": "HOU"}, "Los Angeles Clippers": {"primary": "#C8102E", "secondary": "#1D428A", "abbr": "LAC"}, "Memphis Grizzlies": {"primary": "#5D76A9", "secondary": "#12173F", "abbr": "MEM"}, "Miami Heat": {"primary": "#F9A01B", "secondary": "#98002E", "abbr": "MIA"}, "Milwaukee Bucks": {"primary": "#00471B", "secondary": "#EEE1C6", "abbr": "MIL"}, "New Orleans Pelicans": {"primary": "#0C2340", "secondary": "#C8102E", "abbr": "NOP"}, "Portland Trail Blazers": {"primary": "#E03A3E", "secondary": "#000000", "abbr": "POR"}, "San Antonio Spurs": {"primary": "#C4CED4", "secondary": "#000000", "abbr": "SAS"}, "Washington Wizards": {"primary": "#002B5C", "secondary": "#E31837", "abbr": "WAS"}};
+
+// ── Model ─────────────────────────────────────────────────────────────────
+const BASELINE_MODEL = {
+  intercept: -0.09997461307945037,
+  spread_coef: 0.14388872433221694,
+};
+const POSITION_WEIGHTS = {
+  stat_coefficients: { points: 0.9997434923588219, rebounds: 0.0001510069554678691, assists: 0.0002772389667772763 },
+  position_multipliers: {
+    G: { points: 1.0000522737825377, rebounds: 0.6866254823021336, assists: 1.0498710458990403 },
+    F: { points: 1.0, rebounds: 1.0, assists: 1.0 },
+    C: { points: 1.0000240657576953, rebounds: 0.787904260261103, assists: 0.945383923228148 },
+  },
+};
+// Mirror of src/player_adjustment.py rebound-impact calibration.
+const REBOUND_CALIBRATION = {
+  pi_o_by_bucket: { G: (0.18 + 0.20) / 2, F: (0.22 + 0.28) / 2, C: 0.32 },
+  beta_oreb: 1.10,
+  beta_dreb: 1.10,
+  rho_d: 0.30,
+};
+function reboundMarginContribution(deltaReb, posBucket){
+  const piO = REBOUND_CALIBRATION.pi_o_by_bucket[posBucket] ?? 0.24;
+  const piD = 1 - piO;
+  const dOreb = piO * deltaReb;
+  const dDreb = piD * deltaReb;
+  return REBOUND_CALIBRATION.beta_oreb * dOreb
+       + REBOUND_CALIBRATION.beta_dreb * REBOUND_CALIBRATION.rho_d * dDreb;
+}
+// Mirror of src/player_adjustment.py assist-impact calibration.
+const ASSIST_CALIBRATION = {
+  pi_2: 0.58,
+  pi_3: 0.42,
+  pi_ft_given_2: 0.06,
+  pi_ft_given_3: 0.02,
+  pi_ft_made: 0.78,
+  beta_ast_premium: 0.20,
+};
+function expectedPtsPerAssist(){
+  const c = ASSIST_CALIBRATION;
+  const p2    = c.pi_2 * (1 - c.pi_ft_given_2);
+  const p2ft  = c.pi_2 * c.pi_ft_given_2;
+  const p3    = c.pi_3 * (1 - c.pi_ft_given_3);
+  const p3ft  = c.pi_3 * c.pi_ft_given_3;
+  return p2 * 2.0 + p2ft * (2.0 + c.pi_ft_made)
+       + p3 * 3.0 + p3ft * (3.0 + c.pi_ft_made);
+}
+function assistMarginContribution(deltaAst){
+  return deltaAst * expectedPtsPerAssist()
+       + ASSIST_CALIBRATION.beta_ast_premium * deltaAst;
+}
+// Mirror of WinProbModel in src/player_adjustment.py — three chained derivatives
+// for likelihood indicators on each player slider.
+function anchorRebMargin(){ return reboundMarginContribution(1.0, 'F'); }
+function indicatorC(stat){
+  if(stat==='PTS') return POSITION_WEIGHTS.stat_coefficients.points;
+  if(stat==='REB') return anchorRebMargin();
+  if(stat==='AST') return assistMarginContribution(1.0);
+  return 0;
+}
+function indicatorWPos(stat, posBucket){
+  if(stat==='PTS'){
+    const m = POSITION_WEIGHTS.position_multipliers[posBucket]
+            || POSITION_WEIGHTS.position_multipliers.F;
+    return m.points;
+  }
+  if(stat==='REB'){
+    const anchor = anchorRebMargin();
+    return anchor === 0 ? 1.0 : reboundMarginContribution(1.0, posBucket) / anchor;
+  }
+  return 1.0; // AST is position-independent
+}
+function sliderSensitivity(pWin, stat, posBucket){
+  return pWin*(1-pWin)*BASELINE_MODEL.spread_coef*indicatorC(stat)*indicatorWPos(stat,posBucket);
+}
+function sliderScore(y, pWin, stat, posBucket){
+  return (y - pWin)*BASELINE_MODEL.spread_coef*indicatorC(stat)*indicatorWPos(stat,posBucket);
+}
+function sliderFisher(pWin, stat, posBucket){
+  const d = BASELINE_MODEL.spread_coef*indicatorC(stat)*indicatorWPos(stat,posBucket);
+  return pWin*(1-pWin)*d*d;
+}
+const SLIDER_STEP = { pts: 1, reb: 0.5, ast: 0.5 };
+const TEAM_SLIDER_POINTS_FACTOR = 0.12;
+
+function sigmoid(x){return 1/(1+Math.exp(-x));}
+function logit(p){return Math.log(p/(1-p));}
+function clamp(v,min,max){return Math.min(max,Math.max(min,v));}
+function predictWinFromSpread(signedSpreadHome){
+  return sigmoid(BASELINE_MODEL.intercept + BASELINE_MODEL.spread_coef * signedSpreadHome);
+}
+function toPosBucket(pos){
+  const p=String(pos||'F').toUpperCase();
+  if(p.includes('G')) return 'G';
+  if(p.includes('C')) return 'C';
+  return 'F';
+}
+function probColor(p){
+  if(p>=.65) return '#22c55e';
+  if(p>=.52) return '#a3e635';
+  if(p>=.42) return '#FFC72C';
+  if(p>=.3)  return '#fb923c';
+  return '#ef4444';
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+const state = {a:{team:null,avg:null}, b:{team:null,avg:null}};
+const POSITIONS=['PG','SG','SF','PF','C'];
+const SLIDER_DEFS=[
+  {id:'fg', label:'Field Goal %', min:25, max:65, step:0.5, avgKey:'fg_pct', unit:'%', hint:'League avg ~46%'},
+  {id:'3pt', label:'3-Point %', min:10, max:60, step:0.5, avgKey:'three_pct', unit:'%', hint:'League avg ~34%'},
+  {id:'close', label:'Close Range %', min:30, max:85, step:0.5, avgKey:'close_pct', unit:'%', hint:'Under-10ft makes'},
+  {id:'3att', label:'3PT Attempts', min:5, max:50, step:1, avgKey:'three_attempts', unit:'', hint:'League avg ~25'},
+  {id:'makes', label:'Total FGM', min:15, max:60, step:1, avgKey:'total_makes', unit:'', hint:'Field goals made'},
+];
+
+// ── Build team chips ──────────────────────────────────────────────────────
+['a','b'].forEach(side=>{
+  const container=document.getElementById('chips'+side.toUpperCase());
+  MODEL_DATA.teams.sort().forEach(t=>{
+    const colors=TEAM_COLORS[t]||{primary:'#aaa',abbr:t.slice(0,3).toUpperCase()};
+    const ch=document.createElement('div');
+    ch.className='chip'; ch.dataset.team=t; ch.dataset.side=side;
+    ch.innerHTML=`<div class="chip-dot"></div><span>${colors.abbr}</span>`;
+    ch.title=t;
+    ch.addEventListener('click',()=>selectTeam(side,t));
+    container.appendChild(ch);
+  });
+});
+
+// ── Build sliders for one side ────────────────────────────────────────────
+function buildSliders(side){
+  const container=document.getElementById('sliders'+side.toUpperCase());
+  container.innerHTML='';
+  SLIDER_DEFS.forEach(def=>{
+    const div=document.createElement('div');
+    div.className='sr';
+    div.innerHTML=`
+      <div class="sr-top">
+        <span class="sr-lbl">${def.label}</span>
+        <div style="display:flex;align-items:baseline;gap:3px;">
+          <span class="sr-val" id="val-${side}-${def.id}" style="color:var(--${side})">—</span>
+          <span class="sr-delta" id="del-${side}-${def.id}"></span>
+        </div>
+      </div>
+      <input type="range" class="range-${side}" id="sl-${side}-${def.id}"
+             min="${def.min}" max="${def.max}" step="${def.step}" value="${(def.min+def.max)/2}"
+             oninput="onSlider('${side}')">
+      <div class="sr-hint"><span>${def.min}${def.unit}</span><span style="color:var(--text-3)">${def.hint}</span><span>${def.max}${def.unit}</span></div>
+    `;
+    container.appendChild(div);
+  });
+}
+buildSliders('a');
+buildSliders('b');
+
+// ── Select team ────────────────────────────────────────────────────────────
+function selectTeam(side,team){
+  state[side].team=team;
+  state[side].avg=MODEL_DATA.team_avgs[team];
+  const colors=TEAM_COLORS[team]||{primary:'#aaa',abbr:team.slice(0,3).toUpperCase()};
+  // update CSS var
+  document.documentElement.style.setProperty(`--${side}`,colors.primary);
+  document.documentElement.style.setProperty(`--${side}-dim`,hexAlpha(colors.primary,.13));
+  document.documentElement.style.setProperty(`--${side}-glow`,hexAlpha(colors.primary,.28));
+
+  // chips
+  document.querySelectorAll(`.chip[data-side="${side}"]`).forEach(c=>{
+    const active=c.dataset.team===team;
+    c.classList.remove('sel-a','sel-b');
+    if(active){c.classList.add(`sel-${side}`);c.querySelector('.chip-dot').style.background=colors.primary;}
+    else c.querySelector('.chip-dot').style.background='';
+  });
+  // hero
+  const S=side.toUpperCase();
+  document.getElementById('abbr'+S).textContent=colors.abbr;
+  document.getElementById('name'+S).textContent=team;
+  const rec=MODEL_DATA.team_records[team]||{wins:0,losses:0,win_pct:0,games:0};
+  document.getElementById('rec'+S).innerHTML=`
+    <span class="hrec"><strong>${rec.wins}</strong> W</span><div class="hrdiv"></div>
+    <span class="hrec"><strong>${rec.losses}</strong> L</span><div class="hrdiv"></div>
+    <span class="hrec" style="color:var(--text-2)">${rec.win_pct}% WR</span>
+    <div class="hrdiv"></div><span class="hrec" style="color:var(--text-3)">${rec.games}G</span>`;
+  const av=state[side].avg;
+  document.getElementById('pills'+S).innerHTML=`
+    <span class="hpill">~${av.avg_pts} pts/g</span>
+    <span class="hpill">FG ${av.fg_pct}%</span>
+    <span class="hpill">3PT ${av.three_pct}%</span>`;
+  // set sliders to team avg
+  loadAvg(side);
+  // starting five
+  buildFive(side,team);
+  updateAll();
+}
+
+function loadAvg(side){
+  const av=state[side].avg; if(!av) return;
+  SLIDER_DEFS.forEach(def=>{
+    document.getElementById(`sl-${side}-${def.id}`).value=av[def.avgKey];
+  });
+  updateLabels(side);
+}
+
+function onSlider(side){
+  updateLabels(side);
+  updateAll();
+}
+
+function updateLabels(side){
+  const av=state[side].avg;
+  SLIDER_DEFS.forEach(def=>{
+    const el=document.getElementById(`sl-${side}-${def.id}`);
+    const v=parseFloat(el.value);
+    const valEl=document.getElementById(`val-${side}-${def.id}`);
+    valEl.textContent=def.unit==='%'?v.toFixed(1)+'%':Math.round(v);
+    const delEl=document.getElementById(`del-${side}-${def.id}`);
+    if(!av){delEl.textContent='';return;}
+    const diff=v-av[def.avgKey];
+    if(Math.abs(diff)<0.15){delEl.textContent='';delEl.className='sr-delta';}
+    else{
+      const s=diff>0?'+':'';
+      delEl.textContent=s+(def.unit==='%'?diff.toFixed(1)+'%':Math.round(diff));
+      delEl.className='sr-delta '+(diff>0?'up':'dn');
+    }
+  });
+}
+
+function getVals(side){
+  return {
+    fg:parseFloat(document.getElementById(`sl-${side}-fg`).value||46),
+    tpt:parseFloat(document.getElementById(`sl-${side}-3pt`).value||34),
+    close:parseFloat(document.getElementById(`sl-${side}-close`).value||61),
+    tatt:parseInt(document.getElementById(`sl-${side}-3att`).value||25),
+    makes:parseInt(document.getElementById(`sl-${side}-makes`).value||37),
+  };
+}
+
+function getTeamBaselineSpread(){
+  if(!state.a.team || !state.b.team) return 0;
+  const recA=MODEL_DATA.team_records[state.a.team]||{win_pct:50,games:0};
+  const recB=MODEL_DATA.team_records[state.b.team]||{win_pct:50,games:0};
+  const gA=Math.max(0,recA.games||0), gB=Math.max(0,recB.games||0);
+  const wrA=clamp((recA.win_pct||50)/100,0.01,0.99);
+  const wrB=clamp((recB.win_pct||50)/100,0.01,0.99);
+  // Shrink toward 0.5 for small samples so 0-3 records do not dominate.
+  const shrunkA=((wrA*gA)+(0.5*20))/(gA+20);
+  const shrunkB=((wrB*gB)+(0.5*20))/(gB+20);
+  const pBase=clamp(0.5 + (shrunkA-shrunkB)*0.9,0.05,0.95);
+  return (logit(pBase)-BASELINE_MODEL.intercept)/BASELINE_MODEL.spread_coef;
+}
+
+function estimateTeamPoints(v){
+  const threesMade=Math.max(0,(v.tpt/100)*v.tatt);
+  const twoMade=Math.max(0,v.makes-threesMade);
+  return (twoMade*2)+(threesMade*3);
+}
+
+function getTeamSliderMargin(){
+  if(!state.a.avg || !state.b.avg) return 0;
+  const va=getVals('a'), vb=getVals('b');
+  const estPtsA=estimateTeamPoints(va), estPtsB=estimateTeamPoints(vb);
+  const dPtsA=estPtsA-(state.a.avg.avg_pts||estPtsA);
+  const dPtsB=estPtsB-(state.b.avg.avg_pts||estPtsB);
+  return TEAM_SLIDER_POINTS_FACTOR*(dPtsA-dPtsB);
+}
+
+function getPlayerMarginDetails(){
+  const out={margin:0,sideA:{points:0,rebounds:0,assists:0},sideB:{points:0,rebounds:0,assists:0}};
+  ['a','b'].forEach(side=>{
+    const team=state[side].team;
+    if(!team) return;
+    const players=(MODEL_DATA.team_players[team]||[]).slice(0,5);
+    players.forEach((player,i)=>{
+      const key=`${team}|${player}`;
+      const av=MODEL_DATA.player_avgs[key]||{avg_pts:10,avg_reb:4,avg_ast:3};
+      const curPts=parseFloat(document.getElementById(`ps-${side}-${i}-pts`)?.value ?? av.avg_pts);
+      const curReb=parseFloat(document.getElementById(`ps-${side}-${i}-reb`)?.value ?? av.avg_reb);
+      const curAst=parseFloat(document.getElementById(`ps-${side}-${i}-ast`)?.value ?? av.avg_ast);
+      const dPts=curPts-av.avg_pts, dReb=curReb-av.avg_reb, dAst=curAst-av.avg_ast;
+      const pos=toPosBucket(POSITIONS[i]||'F');
+      const m=POSITION_WEIGHTS.position_multipliers[pos]||POSITION_WEIGHTS.position_multipliers.F;
+      const ptsContrib=POSITION_WEIGHTS.stat_coefficients.points*m.points*dPts;
+      const rebContrib=reboundMarginContribution(dReb,pos);
+      const astContrib=assistMarginContribution(dAst);
+      if(side==='a'){
+        out.sideA.points+=ptsContrib; out.sideA.rebounds+=rebContrib; out.sideA.assists+=astContrib;
+        out.margin += ptsContrib+rebContrib+astContrib;
+      }else{
+        out.sideB.points+=ptsContrib; out.sideB.rebounds+=rebContrib; out.sideB.assists+=astContrib;
+        out.margin -= ptsContrib+rebContrib+astContrib;
+      }
+    });
+  });
+  return out;
+}
+
+// ── Starting Five ─────────────────────────────────────────────────────────
+function buildFive(side,team){
+  const players=MODEL_DATA.team_players[team]||[];
+  const container=document.getElementById('five'+side.toUpperCase());
+  container.innerHTML='';
+  players.slice(0,5).forEach((player,i)=>{
+    const key=`${team}|${player}`;
+    const av=MODEL_DATA.player_avgs[key]||{avg_pts:10,avg_reb:4,avg_ast:3};
+    const pts=Math.round(av.avg_pts), reb=av.avg_reb, ast=av.avg_ast;
+    const card=document.createElement('div');
+    card.className=`pcard ${side}`; card.id=`pc-${side}-${i}`;
+    card.innerHTML=`
+      <div class="pcard-top" onclick="togglePCard('${side}',${i})">
+        <div class="pnum">${i+1}</div>
+        <div class="pname-wrap"><div class="pname">${player}</div><div class="ppos">${POSITIONS[i]||'?'}</div></div>
+        <div class="pstats">
+          <div class="psb"><div class="psb-v" id="pv-${side}-${i}-pts">${pts}</div><div class="psb-l">PTS</div></div>
+          <div class="psb"><div class="psb-v" id="pv-${side}-${i}-reb">${reb}</div><div class="psb-l">REB</div></div>
+          <div class="psb"><div class="psb-v" id="pv-${side}-${i}-ast">${ast}</div><div class="psb-l">AST</div></div>
+        </div>
+        <span class="expand-arrow">▾</span>
+      </div>
+      <div class="psliders">
+        <div class="msr">
+          <span class="mlbl">PTS</span>
+          <div class="mslider"><input type="range" class="range-${side}" id="ps-${side}-${i}-pts" min="0" max="45" step="1" value="${pts}" oninput="onPSlider('${side}',${i})"></div>
+          <span class="mval" id="pmv-${side}-${i}-pts">${pts}</span>
+          <span class="sr-delta" id="psd-${side}-${i}-pts"></span>
+        </div>
+        <div class="msr">
+          <span class="mlbl">REB</span>
+          <div class="mslider"><input type="range" class="range-${side}" id="ps-${side}-${i}-reb" min="0" max="20" step="0.5" value="${reb}" oninput="onPSlider('${side}',${i})"></div>
+          <span class="mval" id="pmv-${side}-${i}-reb">${reb}</span>
+          <span class="sr-delta" id="psd-${side}-${i}-reb"></span>
+        </div>
+        <div class="msr">
+          <span class="mlbl">AST</span>
+          <div class="mslider"><input type="range" class="range-${side}" id="ps-${side}-${i}-ast" min="0" max="15" step="0.5" value="${ast}" oninput="onPSlider('${side}',${i})"></div>
+          <span class="mval" id="pmv-${side}-${i}-ast">${ast}</span>
+          <span class="sr-delta" id="psd-${side}-${i}-ast"></span>
+        </div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function togglePCard(side,i){
+  document.getElementById(`pc-${side}-${i}`).classList.toggle('open');
+}
+
+function onPSlider(side,i){
+  ['pts','reb','ast'].forEach(stat=>{
+    const v=parseFloat(document.getElementById(`ps-${side}-${i}-${stat}`).value);
+    const disp=stat==='pts'?Math.round(v):v;
+    document.getElementById(`pmv-${side}-${i}-${stat}`).textContent=disp;
+    document.getElementById(`pv-${side}-${i}-${stat}`).textContent=disp;
+  });
+  aggregateFive(side);
+}
+
+function aggregateFive(side){
+  const team=state[side].team; if(!team) return;
+  const players=MODEL_DATA.team_players[team]||[];
+  let totalPts=0,totalAtt=0;
+  players.slice(0,5).forEach((p,i)=>{
+    const el=document.getElementById(`ps-${side}-${i}-pts`); if(!el) return;
+    const pts=parseInt(el.value);
+    const key=`${team}|${p}`;
+    const av=MODEL_DATA.player_avgs[key]||{avg_fg_pct:45,avg_attempts:10};
+    const estMakes=pts/2.2;
+    const estAtt=estMakes/(av.avg_fg_pct/100||.45);
+    totalPts+=pts; totalAtt+=estAtt;
+  });
+  const estMakes=totalPts/2.2;
+  const estFg=totalAtt>0?(estMakes/totalAtt)*100:46;
+  document.getElementById(`sl-${side}-makes`).value=Math.round(Math.min(60,Math.max(15,estMakes)));
+  document.getElementById(`sl-${side}-fg`).value=Math.min(65,Math.max(25,estFg.toFixed(1)));
+  updateLabels(side);
+  updateAll();
+}
+
+// ── Per-slider likelihood indicators (sensitivity × step) ────────────────
+function updateSliderIndicators(pa){
+  const pb = 1 - pa;
+  ['a','b'].forEach(side=>{
+    const pSide = side==='a' ? pa : pb;
+    const team = state[side].team;
+    if(!team) return;
+    const players = (MODEL_DATA.team_players[team]||[]).slice(0,5);
+    players.forEach((_p, i)=>{
+      const pos = toPosBucket(POSITIONS[i]||'F');
+      [['pts','PTS'], ['reb','REB'], ['ast','AST']].forEach(([key, stat])=>{
+        const el = document.getElementById(`psd-${side}-${i}-${key}`);
+        if(!el) return;
+        const step = SLIDER_STEP[key];
+        const dP = sliderSensitivity(pSide, stat, pos) * step;
+        const pct = dP * 100;
+        if(Math.abs(pct) < 0.01){ el.textContent=''; el.className='sr-delta'; }
+        else { el.textContent = `+${pct.toFixed(2)}%/step`; el.className='sr-delta up'; }
+      });
+    });
+  });
+}
+
+// ── Main update ───────────────────────────────────────────────────────────
+function updateAll(){
+  const va=getVals('a'), vb=getVals('b');
+  const ready=Boolean(state.a.team&&state.b.team);
+  const baselineSpread=getTeamBaselineSpread();
+  const baselineProb=ready?predictWinFromSpread(baselineSpread):0.5;
+  const playerDetails=getPlayerMarginDetails();
+  const teamSliderMargin=getTeamSliderMargin();
+  const effectiveSpread=baselineSpread + playerDetails.margin + teamSliderMargin;
+  const pa=ready?predictWinFromSpread(effectiveSpread):0.5;
+  const pb=1-pa;
+  updateSliderIndicators(pa);
+  const pctA=Math.round(pa*100), pctB=Math.round(pb*100);
+  const ca=probColor(pa), cb=probColor(pb);
+
+  // Big numbers
+  document.getElementById('bigA').innerHTML=`${pctA}<span class="bn-pct" style="font-size:20px">%</span>`;
+  document.getElementById('bigA').style.color=ca;
+  document.getElementById('bigB').innerHTML=`${pctB}<span class="bn-pct" style="font-size:20px">%</span>`;
+  document.getElementById('bigB').style.color=cb;
+  document.getElementById('bigNameA').textContent=state.a.team||'—';
+  document.getElementById('bigNameB').textContent=state.b.team||'—';
+
+  // Split bar
+  const wA=pctA, wB=100-wA;
+  document.getElementById('splitA').style.width=wA+'%';
+  document.getElementById('splitB').style.width=wB+'%';
+  document.getElementById('splitLblA').textContent=pctA+'%';
+  document.getElementById('splitLblB').textContent=pctB+'%';
+
+  // Verdict
+  const vbox=document.getElementById('verdictBox');
+  const vtxt=document.getElementById('verdictText');
+  if(!ready){vtxt.textContent='Select both teams to compare';vbox.style.borderColor='var(--border-2)';}
+  else{
+    const diff=Math.abs(pctA-pctB);
+    const leader=pctA>=pctB?state.a.team:state.b.team;
+    const leaderColor=pctA>=pctB?'var(--a)':'var(--b)';
+    if(diff<=4){vtxt.innerHTML=`⚖️ <strong>Too close to call</strong> — within ${diff}pp`; vbox.style.borderColor='var(--border-2)';}
+    else if(diff<=12){vtxt.innerHTML=`📈 <span style="color:${leaderColor}">${leader}</span> has a moderate edge (+${diff}pp)`;}
+    else{vtxt.innerHTML=`🔥 <span style="color:${leaderColor}">${leader}</span> is heavily favored (+${diff}pp)`;}
+  }
+
+  // Factor compare bars
+  const FACTOR_LABELS=['PTS Impact','REB Impact','AST Impact','Form Edge','Team Sliders'];
+  const factors_a=[
+    playerDetails.sideA.points,
+    playerDetails.sideA.rebounds,
+    playerDetails.sideA.assists,
+    Math.max(0,baselineSpread),
+    Math.max(0,teamSliderMargin),
+  ];
+  const factors_b=[
+    playerDetails.sideB.points,
+    playerDetails.sideB.rebounds,
+    playerDetails.sideB.assists,
+    Math.max(0,-baselineSpread),
+    Math.max(0,-teamSliderMargin),
+  ];
+  const maxF=Math.max(...factors_a.map(x=>Math.abs(x)),...factors_b.map(x=>Math.abs(x)),0.001);
+  const frows=document.getElementById('factorRows'); frows.innerHTML='';
+  FACTOR_LABELS.forEach((lbl,i)=>{
+    const wA=Math.round(Math.abs(factors_a[i])/maxF*50);
+    const wB=Math.round(Math.abs(factors_b[i])/maxF*50);
+    const row=document.createElement('div'); row.className='fc-row';
+    row.innerHTML=`
+      <div class="fc-side a"><span class="fc-val">${factors_a[i].toFixed(2)}</span><div class="fc-bar-a" style="width:${wA}px"></div></div>
+      <span class="fc-label">${lbl}</span>
+      <div class="fc-side b"><div class="fc-bar-b" style="width:${wB}px"></div><span class="fc-val">${factors_b[i].toFixed(2)}</span></div>`;
+    frows.appendChild(row);
+  });
+
+  // Stat compare grid
+  const sgrid=document.getElementById('statGrid'); sgrid.innerHTML='';
+  const statDefs=[
+    {lbl:'FG%', av:va.fg.toFixed(1)+'%', bv:vb.fg.toFixed(1)+'%', an:va.fg, bn:vb.fg},
+    {lbl:'3PT%', av:va.tpt.toFixed(1)+'%', bv:vb.tpt.toFixed(1)+'%', an:va.tpt, bn:vb.tpt},
+    {lbl:'Close%', av:va.close.toFixed(1)+'%', bv:vb.close.toFixed(1)+'%', an:va.close, bn:vb.close},
+    {lbl:'3PT Att', av:va.tatt, bv:vb.tatt, an:va.tatt, bn:vb.tatt},
+    {lbl:'FGM', av:va.makes, bv:vb.makes, an:va.makes, bn:vb.makes},
+  ];
+  statDefs.forEach(({lbl,av,bv,an,bn})=>{
+    const aBetter=an>=bn, bBetter=bn>an;
+    const row=document.createElement('div'); row.className='sg-row';
+    row.innerHTML=`
+      <div class="sg-val a ${aBetter?'better':''}">${av}${aBetter?'<span class="sg-dot a"></span>':''}</div>
+      <span class="sg-lbl">${lbl}</span>
+      <div class="sg-val b ${bBetter?'better':''}">${bBetter?'<span class="sg-dot b"></span>':''}${bv}</div>`;
+    sgrid.appendChild(row);
+  });
+}
+
+// ── Presets ──────────────────────────────────────────────────────────────
+function resetTeam(side){if(state[side].team)selectTeam(side,state[side].team);}
+function setBest(side){
+  const av=state[side].avg; if(!av) return;
+  SLIDER_DEFS.forEach(def=>{
+    const el=document.getElementById(`sl-${side}-${def.id}`);
+    el.value=Math.min(def.max,parseFloat(av[def.avgKey])+8);
+  });
+  updateLabels(side); updateAll();
+}
+function setWorst(side){
+  const av=state[side].avg; if(!av) return;
+  SLIDER_DEFS.forEach(def=>{
+    const el=document.getElementById(`sl-${side}-${def.id}`);
+    el.value=Math.max(def.min,parseFloat(av[def.avgKey])-8);
+  });
+  updateLabels(side); updateAll();
+}
+
+// ── Util ─────────────────────────────────────────────────────────────────
+function hexAlpha(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+selectTeam('a','Golden State Warriors');
+selectTeam('b','Cleveland Cavaliers');
+</script>
+</body>
+</html>
