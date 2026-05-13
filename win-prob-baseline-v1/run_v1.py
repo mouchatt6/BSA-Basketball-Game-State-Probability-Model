@@ -11,7 +11,14 @@ from src.backtest import calibration_table_from_predictions, run_rolling_backtes
 from src.baseline import brier_score, fit_baseline_model, log_loss
 from src.calibration import calibrate_position_weights, write_calibrated_config
 from src.data_loader import load_betting_data, split_train_test
-from src.player_adjustment import PlayerDelta, PositionWeightConfig, compute_player_margin_delta
+from src.player_adjustment import (
+    PlayerDelta,
+    PositionWeightConfig,
+    assist_calibration_payload,
+    compute_player_margin_delta,
+    rebound_calibration_payload,
+)
+from src.win_prob_indicators import build_winprob_model, indicators_summary
 
 
 def _build_scenario_examples(config: PositionWeightConfig) -> pd.DataFrame:
@@ -100,6 +107,17 @@ def main() -> None:
 
     scenario_df = _build_scenario_examples(position_config)
     scenario_df.to_csv(outputs_dir / "player_slider_scenario_checks.csv", index=False)
+
+    (outputs_dir / "rebound_calibration.json").write_text(
+        json.dumps(rebound_calibration_payload(), indent=2)
+    )
+    (outputs_dir / "assist_calibration.json").write_text(
+        json.dumps(assist_calibration_payload(), indent=2)
+    )
+
+    winprob_model = build_winprob_model(baseline_payload, position_config)
+    indicators = indicators_summary(winprob_model)
+    pd.DataFrame(indicators).to_csv(outputs_dir / "win_prob_indicators_summary.csv", index=False)
 
     print("Completed Baseline Win Probability V1 run.")
     print(f"Saved outputs in: {outputs_dir}")
