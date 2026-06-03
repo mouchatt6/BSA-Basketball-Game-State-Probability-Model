@@ -310,6 +310,11 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:none;border-ra
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--surface-4);border-radius:2px;}
+
+/* ── PLAYER PHOTO ── */
+.pphoto{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--surface-3);border:1.5px solid var(--border-2);display:block;}
+.pcard.a .pphoto{border-color:color-mix(in oklch,var(--a) 35%,transparent);}
+.pcard.b .pphoto{border-color:color-mix(in oklch,var(--b) 35%,transparent);}
 </style>
 </head>
 <body>
@@ -486,6 +491,63 @@ const TEAM_LOGOS = {
   "Toronto Raptors":      "https://cdn.nba.com/logos/nba/1610612761/global/L/logo.svg",
   "Washington Wizards":   "https://cdn.nba.com/logos/nba/1610612764/global/L/logo.svg",
 };
+
+const PLAYER_PHOTOS = (function(){
+  const base = "https://cdn.nba.com/headshots/nba/latest/260x190/";
+  const ids = {
+    // Atlanta Hawks
+    "Jeff Teague":201952, "Al Horford":201143, "Paul Millsap":200794,
+    "DeMarre Carroll":203488, "Kyle Korver":2594,
+    // Brooklyn Nets
+    "Joe Johnson":2207, "Brook Lopez":201572, "Deron Williams":101114,
+    "Thaddeus Young":201152, "Bojan Bogdanovic":202711,
+    // Boston Celtics
+    "Avery Bradley":203382, "Isaiah Thomas":202738, "Evan Turner":202323,
+    "Jared Sullinger":203107, "Marcus Smart":203935,
+    // Cleveland Cavaliers
+    "LeBron James":2544, "JR Smith":2747, "Kyrie Irving":202681,
+    "Iman Shumpert":202697, "Timofey Mozgov":201585,
+    // Milwaukee Bucks
+    "Khris Middleton":203114, "Michael Carter-Williams":203487,
+    "Giannis Antetokounmpo":203507, "Ersan Ilyasova":101109, "O.J. Mayo":201564,
+    // Chicago Bulls
+    "Derrick Rose":201565, "Jimmy Butler":202710, "Pau Gasol":2200,
+    "Mike Dunleavy":2399, "Joakim Noah":201149,
+    // Toronto Raptors
+    "DeMar DeRozan":201942, "Kyle Lowry":200768, "Lou Williams":2571,
+    "Jonas Valanciunas":203500, "Greivis Vasquez":202362,
+    // Washington Wizards
+    "Bradley Beal":203078, "John Wall":202322, "Paul Pierce":1718,
+    "Otto Porter Jr.":203490, "Marcin Gortat":202335,
+    // Golden State Warriors
+    "Stephen Curry":201939, "Klay Thompson":202691, "Draymond Green":203110,
+    "Harrison Barnes":203084, "Andre Iguodala":2738,
+    // New Orleans Pelicans
+    "Anthony Davis":203076, "Eric Gordon":201569, "Ryan Anderson":201583,
+    "Tyreke Evans":201936, "Norris Cole":203115,
+    // Houston Rockets
+    "James Harden":201935, "Josh Smith":2746, "Trevor Ariza":2772,
+    "Dwight Howard":2730, "Corey Brewer":201147,
+    // Dallas Mavericks
+    "Monta Ellis":101145, "Dirk Nowitzki":1717, "J.J. Barea":201977,
+    "Amar'e Stoudemire":2405, "Al-Farouq Aminu":202329,
+    // San Antonio Spurs
+    "Kawhi Leonard":202695, "Tony Parker":1901, "Tim Duncan":1495,
+    "Boris Diaw":2564, "Danny Green":201980,
+    // Los Angeles Clippers
+    "Blake Griffin":201933, "Chris Paul":101108, "Jamal Crawford":2037,
+    "JJ Redick":200755, "Austin Rivers":203085,
+    // Portland Trail Blazers
+    "LaMarcus Aldridge":200746, "Damian Lillard":203081, "Nicolas Batum":201587,
+    "CJ McCollum":203468, "Meyers Leonard":203086,
+    // Memphis Grizzlies
+    "Marc Gasol":201188, "Zach Randolph":101141, "Jeff Green":201145,
+    "Courtney Lee":201584, "Mike Conley":201144,
+  };
+  const out = {};
+  for (const [name, id] of Object.entries(ids)) out[name] = base + id + ".png";
+  return out;
+})();
 
 // ── Model ─────────────────────────────────────────────────────────────────
 const BASELINE_MODEL = {
@@ -801,9 +863,11 @@ function buildFive(side,team){
     const pts=Math.round(av.avg_pts), reb=av.avg_reb, ast=av.avg_ast;
     const card=document.createElement('div');
     card.className=`pcard ${side}`; card.id=`pc-${side}-${i}`;
+    const photoUrl = PLAYER_PHOTOS[player] || '';
     card.innerHTML=`
       <div class="pcard-top" onclick="togglePCard('${side}',${i})">
         <div class="pnum">${i+1}</div>
+        ${photoUrl ? `<img class="pphoto" src="${photoUrl}" alt="${player}" onerror="this.style.display='none'">` : ''}
         <div class="pname-wrap"><div class="pname">${player}</div><div class="ppos">${POSITIONS[i]||'?'}</div></div>
         <div class="pstats">
           <div class="psb"><div class="psb-v" id="pv-${side}-${i}-pts">${pts}</div><div class="psb-l">PTS</div></div>
